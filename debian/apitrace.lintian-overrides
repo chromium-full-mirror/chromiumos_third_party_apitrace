@@ -1,0 +1,2 @@
+# Apitrace upstream doesn't have a man page
+apitrace binary: binary-without-manpage
