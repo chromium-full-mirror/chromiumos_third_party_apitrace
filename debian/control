@@ -59,8 +59,9 @@ Description: tools for debugging OpenGL applications and drivers - graphical fro
  This makes it useful for identifying the sources of graphical corruption in
  OpenGL applications.
  .
- This package contains a graphical frontend for the apitrace tool, making it easy to trace
- applications and replay, compare, profile, and modify existing traces.
+ This package contains a graphical frontend for the apitrace tool, making it
+ easy to trace applications and replay, compare, profile, and modify existing
+ traces.
 
 Package: apitrace-tracers
 Architecture: any
