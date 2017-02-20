@@ -19,7 +19,7 @@ Build-Depends:
  libbsd-dev,
  libprocps-dev,
  libgtest-dev,
-Standards-Version: 3.9.5
+Standards-Version: 4.0.0
 Homepage: https://apitrace.github.io
 Vcs-Git: git://git.debian.org/pkg-xorg/app/apitrace.git
 Vcs-Browser: http://git.debian.org/?p=pkg-xorg/app/apitrace.git;a=summary
