@@ -1,3 +1,10 @@
+apitrace (7.1+git20160531.2d78bef0+repack-2) UNRELEASED; urgency=medium
+
+  * control: Drop libgles1-mesa-dev from build-depends. (Closes:
+    #855119)
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Tue, 07 Mar 2017 15:48:11 +0200
+
 apitrace (7.1+git20160531.2d78bef0+repack-1.1) unstable; urgency=medium
 
   * Non-maintainer upload.

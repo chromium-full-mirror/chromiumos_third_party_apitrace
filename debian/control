@@ -7,7 +7,6 @@ Build-Depends:
  cmake,
  libgl1-mesa-dev,
  libegl1-mesa-dev,
- libgles1-mesa-dev,
  libgles2-mesa-dev,
  libwaffle-dev,
  qtbase5-dev,
