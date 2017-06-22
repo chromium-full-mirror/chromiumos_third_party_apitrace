@@ -1,14 +1,15 @@
-apitrace (7.1+git20170623.d38a69d6+repack-1.1) UNRELEASED; urgency=medium
+apitrace (7.1+git20170623.d38a69d6+repack-1) UNRELEASED; urgency=medium
 
   [ Timo Aaltonen ]
   * control: Drop libgles1-mesa-dev from build-depends. (Closes:
     #855119)
 
   [ Jordan Justen ]
-  * Non-maintainer upload
+  * Team upload
   * Reflow apitrace-gui description to fix lintian warning
   * Ignore binary-without-manpage lintian warnings
   * Upgrade Standards-Version to 4.0.0
+  * Change maintainer to Debian X Strike Force
 
  -- Jordan Justen <jordan.l.justen@intel.com>  Sun, 19 Feb 2017 20:45:47 -0800
 
