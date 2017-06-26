@@ -80,6 +80,13 @@
 #define D3DFMT_RAWZ ((D3DFORMAT)MAKEFOURCC('R','A','W','Z'))
 #endif
 
+#ifndef D3DFMT_RESZ
+#define D3DFMT_RESZ ((D3DFORMAT)MAKEFOURCC('R','E','S','Z'))
+#endif
+
+#ifndef RESZ_CODE
+#define RESZ_CODE 0x7fa05000
+#endif
 
 #ifndef D3DUSAGE_TEXTAPI
 #define D3DUSAGE_TEXTAPI 0x10000000L

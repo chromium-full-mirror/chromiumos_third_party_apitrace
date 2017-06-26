@@ -35,15 +35,10 @@ macro (target_linker_version_script target version_script)
         )
         # XXX: Unfortunately LINK_DEPENDS is ignored in non-Makefile generators
         # See also http://www.cmake.org/pipermail/cmake/2010-May/037206.html
-        add_custom_target (${target}_version_script
-            DEPENDS ${version_script}
-            VERBATIM
+        set_property (
+            TARGET ${target}
+            PROPERTY LINK_DEPENDS ${version_script}
         )
-        #set_property (
-        #    TARGET ${target}
-        #    PROPERTY LINK_DEPENDS ${version_script}
-        #)
-        add_dependencies (${target} ${target}_version_script)
     endif ()
 endmacro ()
 
@@ -297,6 +292,7 @@ if (WIN32)
     add_dependencies (wgltrace glproc)
     target_link_libraries (wgltrace
         gltrace_common
+        glproc
         glproc_gl
     )
     set_target_properties (wgltrace PROPERTIES
@@ -417,6 +413,8 @@ if (ENABLE_EGL AND NOT WIN32 AND NOT APPLE)
         # avoid the default "lib" prefix
         PREFIX ""
     )
+
+    target_compile_definitions (egltrace PRIVATE -DEGLTRACE=1)
 
     target_link_libraries (egltrace
         gltrace_common

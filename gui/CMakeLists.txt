@@ -9,11 +9,6 @@ endif ()
 
 add_definitions (-DQT_FORCE_ASSERTS)
 
-if (APPLE)
-    # Recent builds of Qt no longer support i386 architecture
-    set (CMAKE_OSX_ARCHITECTURES "x86_64")
-endif()
-
 add_library (qubjson STATIC
     qubjson.cpp
 )
@@ -169,8 +164,6 @@ if (WIN32 AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_VERSION VERSION_LESS 3.1)
             message (STATUS \"Running Qt Deploy Tool...\")
             if (CMAKE_INSTALL_CONFIG_NAME STREQUAL \"Debug\")
                 list (APPEND QT_WINDEPLOYQT_FLAGS --debug)
-            elseif (CMAKE_INSTALL_CONFIG_NAME STREQUAL \"RelWithDebInfo\")
-                list (APPEND QT_WINDEPLOYQT_FLAGS --release-with-debug-info)
             else ()
                 list (APPEND QT_WINDEPLOYQT_FLAGS --release)
             endif ()

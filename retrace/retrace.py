@@ -121,7 +121,7 @@ class ValueDeserializer(stdapi.Visitor, stdapi.ExpanderMixin):
         print '    %s = static_cast<%s>((%s).toSInt());' % (lvalue, enum, rvalue)
 
     def visitBitmask(self, bitmask, lvalue, rvalue):
-        self.visit(bitmask.type, lvalue, rvalue)
+        print '    %s = static_cast<%s>((%s).toUInt());' % (lvalue, bitmask, rvalue)
 
     def visitArray(self, array, lvalue, rvalue):
         tmp = '_a_' + array.tag + '_' + str(self.seq)
@@ -545,7 +545,8 @@ class Retracer:
             print r'        if (_orig_result != 0) {'
             print r'            retrace::warning(call) << "unexpected object destruction\n";'
             print r'        }'
-            print r'        retrace::delObj(call.arg(0));'
+            print r'        // NOTE: Must not delete the object mapping here.  See'
+            print r'        // https://github.com/apitrace/apitrace/issues/462'
             print r'    }'
 
     def invokeInterfaceMethod(self, interface, method):
@@ -559,10 +560,13 @@ class Retracer:
         if str(methodOrFunction.type) == 'HRESULT':
             print r'    if (FAILED(_result)) {'
             print r'        retrace::failed(call, _result);'
-            print r'        return;'
+            self.handleFailure(interface, methodOrFunction)
             print r'    }'
         else:
             print r'    (void)_result;'
+
+    def handleFailure(self, interface, methodOrFunction):
+        print r'        return;'
 
     def checkPitchMismatch(self, method):
         # Warn for mismatches in 2D/3D mappings.

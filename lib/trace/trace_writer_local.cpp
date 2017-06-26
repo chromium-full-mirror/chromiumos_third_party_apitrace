@@ -154,8 +154,7 @@ LocalWriter::open(void) {
 
 static uintptr_t next_thread_num = 1;
 
-static OS_THREAD_SPECIFIC(uintptr_t)
-thread_num;
+static OS_THREAD_LOCAL uintptr_t thread_num;
 
 void LocalWriter::checkProcessId(void) {
     if (m_file &&
@@ -227,14 +226,14 @@ void LocalWriter::flush(void) {
 
     mutex.lock();
     if (acquired) {
-        os::log("apitrace: ignoring exception while tracing\n");
+        os::log("apitrace: ignoring recurrent flush\n");
     } else {
         ++acquired;
         if (m_file) {
             if (os::getCurrentProcessId() != pid) {
-                os::log("apitrace: ignoring exception in child process\n");
+                os::log("apitrace: ignoring flush in child process\n");
             } else {
-                os::log("apitrace: flushing trace due to an exception\n");
+                os::log("apitrace: flushing trace\n");
                 m_file->flush();
             }
         }

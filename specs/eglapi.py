@@ -143,7 +143,10 @@ EGLConfigAttribs = EGLIntArray([
 EGLWindowsSurfaceAttribs = EGLIntArray([
     ('EGL_RENDER_BUFFER', FakeEnum(Int, ['EGL_SINGLE_BUFFER', 'EGL_BACK_BUFFER'])),
     ('EGL_VG_ALPHA_FORMAT', EGLVGAlphaFormat),
-    ('EGL_VG_COLORSPACE', EGLVGColorspace)])
+    ('EGL_VG_COLORSPACE', EGLVGColorspace),
+    ('EGL_POST_SUB_BUFFER_SUPPORTED_NV', EGLBoolean),
+])
+
 
 EGLPixmapSurfaceAttribs = EGLIntArray([
     ('EGL_VG_ALPHA_FORMAT', EGLVGAlphaFormat),
@@ -269,6 +272,9 @@ eglapi.addFunctions([
 
     # EGL_ANGLE_query_surface_pointer
     GlFunction(EGLBoolean, "eglQuerySurfacePointerANGLE", [(EGLDisplay, "dpy"), (EGLSurface, "surface"), (EGLint_enum, "attribute"), Out(Pointer(OpaquePointer(Void)), "value")], sideeffects=False),
+
+    # EGL_CHROMIUM_get_sync_values
+    GlFunction(Bool, "eglGetSyncValuesCHROMIUM", [(EGLDisplay, "dpy"), (EGLSurface, "surface"), Out(Pointer(Int64), "ust"), Out(Pointer(Int64), "msc"), Out(Pointer(Int64), "sbc")], sideeffects=False),
 
     # EGL_EXT_platform_base
     GlFunction(EGLDisplay, "eglGetPlatformDisplayEXT", [(EGLenum, "platform"), (OpaquePointer(Void), "native_display"), (EGLPlatformDisplayAttribsEXT, "attrib_list")]),

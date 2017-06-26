@@ -556,8 +556,8 @@ glapi.addFunctions([
     GlFunction(Void, "glGetQueryObjectiv", [(GLquery, "id"), (GLenum, "pname"), Out(Array(GLint, "_gl_param_size(pname)"), "params")]),
     GlFunction(Void, "glGetQueryObjectuiv", [(GLquery, "id"), (GLenum, "pname"), Out(Array(GLuint, "_gl_param_size(pname)"), "params")]),
     GlFunction(Void, "glBindBuffer", [(GLenum, "target"), (GLbuffer, "buffer")]),
-    GlFunction(Void, "glDeleteBuffers", [(GLsizei, "n"), (Array(Const(GLbuffer), "n"), "buffer")]),
-    GlFunction(Void, "glGenBuffers", [(GLsizei, "n"), Out(Array(GLbuffer, "n"), "buffer")]),
+    GlFunction(Void, "glDeleteBuffers", [(GLsizei, "n"), (Array(Const(GLbuffer), "n"), "buffers")]),
+    GlFunction(Void, "glGenBuffers", [(GLsizei, "n"), Out(Array(GLbuffer, "n"), "buffers")]),
     GlFunction(GLboolean, "glIsBuffer", [(GLbuffer, "buffer")], sideeffects=False),
     GlFunction(Void, "glBufferData", [(GLenum, "target"), (GLsizeiptr, "size"), (Blob(Const(GLvoid), "size"), "data"), (GLenum, "usage")]),
     GlFunction(Void, "glBufferSubData", [(GLenum, "target"), (GLintptr, "offset"), (GLsizeiptr, "size"), (Blob(Const(GLvoid), "size"), "data")]),
@@ -2817,7 +2817,7 @@ glapi.addFunctions([
 
     # GL_KTX_buffer_region
     # XXX: http://www.west.net/~brittain/3dsmax2.htm does not mention EXT suffix
-    GlFunction(GLregion, "glNewBufferRegion", [(GLenum, "type")]),
+    GlFunction(GLregion, "glNewBufferRegion", [(GLenum_region, "type")]),
     GlFunction(Void, "glDeleteBufferRegion", [(GLregion, "region")]),
     GlFunction(Void, "glReadBufferRegion", [(GLregion, "region"), (GLint, "x"), (GLint, "y"), (GLsizei, "width"), (GLsizei, "height")]),
     GlFunction(Void, "glDrawBufferRegion", [(GLregion, "region"), (GLint, "x"), (GLint, "y"), (GLsizei, "width"), (GLsizei, "height"), (GLint, "xDest"), (GLint, "yDest")]),

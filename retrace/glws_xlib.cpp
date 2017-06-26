@@ -152,14 +152,15 @@ processEvents(void)
 }
 
 
-static void
-waitForEvent(Window window, int type)
+static XEvent
+waitForEvent(Window window, int type, long request = 0)
 {
     XEvent event;
     do {
         XWindowEvent(display, window, StructureNotifyMask | KeyPressMask, &event);
         processEvent(event);
-    } while (event.type != type);
+    } while (event.type != type || event.xany.serial < request);
+    return event;
 }
 
 
@@ -202,17 +203,21 @@ createWindow(XVisualInfo *visinfo,
         mask,
         &attr);
 
-    XSizeHints sizehints;
-    sizehints.x = x;
-    sizehints.y = y;
-    sizehints.width  = width;
-    sizehints.height = height;
-    sizehints.flags = USSize | USPosition;
-    XSetNormalHints(display, window, &sizehints);
+    XSizeHints *sizeHints = XAllocSizeHints();
+    sizeHints->x = x;
+    sizeHints->y = y;
+    sizeHints->width  = width;
+    sizeHints->height = height;
+    sizeHints->flags = USSize | USPosition;
+    XSetWMNormalHints(display, window, sizeHints);
 
     XSetStandardProperties(
         display, window, name, name,
-        None, (char **)NULL, 0, &sizehints);
+        None, (char **)NULL, 0, sizeHints);
+
+    XFree(sizeHints);
+
+    XSync(display, False);
 
     return window;
 }
@@ -221,16 +226,46 @@ createWindow(XVisualInfo *visinfo,
 void
 resizeWindow(Window window, int w, int h)
 {
+    // We need to ensure that pending events are processed here, and XSync
+    // with discard = True guarantees that, but it appears the limited
+    // event processing we do so far is sufficient
+    if (0) {
+        XSync(display, True);
+    } else {
+        processEvents();
+    }
+
     // Tell the window manager to respect the requested size
-    XSizeHints size_hints;
-    size_hints.max_width  = size_hints.min_width  = w;
-    size_hints.max_height = size_hints.min_height = h;
-    size_hints.flags = PMinSize | PMaxSize;
-    XSetWMNormalHints(display, window, &size_hints);
+    XSizeHints *sizeHints = XAllocSizeHints();
+    sizeHints->max_width  = sizeHints->min_width  = w;
+    sizeHints->max_height = sizeHints->min_height = h;
+    sizeHints->flags = PMinSize | PMaxSize;
+    XSetWMNormalHints(display, window, sizeHints);
+    XFree(sizeHints);
 
-    XResizeWindow(display, window, w, h);
+    // We need to try multiple times because we can't distinguish the configure
+    // event due to our resize, from the configure event from other actions
+    // (e.g, user moving our window around.)  It's not safe to wait
+    // indefinitely for the event with the desired size neither, because it's
+    // possible the window manager does not allow a window that size.
+    XEvent event;
+    for (unsigned attempt = 0; attempt < 4; ++attempt) {
+        long request = NextRequest(display);
+        XResizeWindow(display, window, w, h);
 
-    waitForEvent(window, ConfigureNotify);
+        event = waitForEvent(window, ConfigureNotify, request);
+        assert(event.type == ConfigureNotify);
+        assert(event.xany.window == window);
+        assert(event.xany.serial >= request);
+        if (event.xconfigure.width == w &&
+            event.xconfigure.height == h) {
+            return;
+        }
+    }
+
+    std::cerr
+        << "warning: xlib: expected " << w << "x" << h << " configure event, "
+        << "got " << event.xconfigure.width << "x" << event.xconfigure.height << "\n";
 }
 
 
@@ -240,8 +275,9 @@ showWindow(Window window)
     // FIXME: This works for DRI drivers, but not NVIDIA proprietary drivers,
     // for which the only solution seems to be to use Pbuffers.
     if (true || !ws::headless) {
+        long request = NextRequest(display);
         XMapWindow(display, window);
-        waitForEvent(window, MapNotify);
+        waitForEvent(window, MapNotify, request);
     }
 }
 
