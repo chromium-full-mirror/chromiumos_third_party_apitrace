@@ -2,14 +2,36 @@
 
 This document specifies the binary format of trace streams.
 
-Trace streams are not written verbatim to file, but compressed, nowadays with
-snappy (see `lib/trace/trace_file_snappy.cpp` for details).  Previously they used
-to be compressed with gzip.
+## Compression ##
+
+Trace streams are not written verbatim to file, but compressed.
+
+By default traces are compressed with [Snappy](https://github.com/google/snappy)
+(see below for details).  Previously they used to be compressed with gzip.  And
+recently it also possible to have them compressed with
+[Brotli](https://github.com/google/brotli), though this is mostly intended for
+space savings on large databases of trace files.
+
+`apitrace repack` utility can be used to recompress the stream without any loss.
+
+### Snappy ###
+
+The used Snappy format is different from the standard _Snappy framing format_,
+because it predates it.
+
+    file = header chunk*
+    
+    header = 'a' 't'
+    
+    chunk = compressed_length compressed_data
+    
+    compressed_length = uint32  // length of compressed data in little endian
+    compressed_data = byte*
 
 
 ## Versions ##
 
-We keep backwards compatability reading old traces, i.e., it should always be
+We keep backwards compatibility reading old traces, i.e., it should always be
 possible to parse and retrace old trace files.
 
 The trace version number refers not only to changes in the binary format
@@ -26,7 +48,7 @@ be retraced.
 | 5 | support for call backtraces |
 
 Writing/editing old traces is not supported however.  An older version of
-apitrace should be used in such circunstances.
+apitrace should be used in such circumstances.
 
 
 ## Basic types ##
@@ -34,7 +56,7 @@ apitrace should be used in such circunstances.
 | Type | Description |
 | ---- | ----------- |
 | `byte` | Raw byte. |
-| `uint` | Variable-length unsigned integer, where the most significative bit is zero for last byte or non-zero if more bytes follow; the 7 least significant bits of each byte are used for the integer's bits, in little-endian order. |
+| `uint` | Variable-length unsigned integer, where the most significant bit is zero for last byte or non-zero if more bytes follow; the 7 least significant bits of each byte are used for the integer's bits, in little-endian order. |
 | `float` | 32 bits single precision floating point number |
 | `double` | 64 bits single precision floating point number |
 
@@ -104,13 +126,14 @@ and the call number is implied for the enter event.
     enum_sig = id count (name value)+  // first occurrence
              | id                      // follow-on occurrences
 
-    bitmask_sig = id count (name value)+  // first occurrence
-                | id                      // follow-on occurrences
+    bitmask_sig = id count (name uint)+  // first occurrence
+                | id                     // follow-on occurrences
 
-    struct_sig = id count member_name*  // first occurrence
-               | id                     // follow-on occurrences
+    struct_sig = id struct_name count member_name*  // first occurrence
+               | id                                 // follow-on occurrences
 
     name = string
+    struct_name = string
     member_name = string
 
     wstring = count uint*

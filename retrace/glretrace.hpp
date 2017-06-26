@@ -28,10 +28,11 @@
 #include "glws.hpp"
 #include "retrace.hpp"
 #include "metric_backend.hpp"
-#include "metric_writer.hpp"
 
 #include "os_thread.hpp"
 
+
+class MetricWriter;
 
 namespace glretrace {
 
@@ -66,6 +67,7 @@ public:
 
     // Bound drawable
     glws::Drawable *drawable = nullptr;
+    glws::Drawable *readable = nullptr;
 
     // Active program (unswizzled) for profiling
     GLuint currentUserProgram = 0;
@@ -110,7 +112,7 @@ extern bool profilingBoundaries[QUERY_BOUNDARY_LIST_END];
 extern unsigned profilingBoundariesIndex[QUERY_BOUNDARY_LIST_END];
 extern std::vector<MetricBackend*> metricBackends;
 extern MetricBackend* curMetricBackend;
-extern MetricWriter profiler;
+MetricWriter& profiler();
 
 extern glfeatures::Profile defaultProfile;
 
@@ -150,6 +152,10 @@ createContext(Context *shareContext = 0);
 
 bool
 makeCurrent(trace::Call &call, glws::Drawable *drawable, Context *context);
+
+bool
+makeCurrent(trace::Call &call, glws::Drawable *drawable,
+            glws::Drawable *readable, Context *context);
 
 
 void

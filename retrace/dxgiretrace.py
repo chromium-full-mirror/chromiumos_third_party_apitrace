@@ -103,24 +103,18 @@ class D3DRetracer(Retracer):
 
         Retracer.invokeFunction(self, function)
 
-    def checkResult(self, interface, methodOrFunction):
+    def handleFailure(self, interface, methodOrFunction):
         # Catch when device is removed, and report the reason.
-        if str(methodOrFunction.type) == 'HRESULT':
-            if interface is not None:
-                getDeviceRemovedReasonMethod = interface.getMethodByName("GetDeviceRemovedReason")
-                if getDeviceRemovedReasonMethod is not None:
-                    print r'    if (FAILED(_result)) {'
-                    print r'        retrace::failed(call, _result);'
-                    print r'        if (_result == DXGI_ERROR_DEVICE_REMOVED) {'
-                    print r'            HRESULT _reason = _this->GetDeviceRemovedReason();'
-                    print r'            retrace::failed(call, _reason);'
-                    print r'            exit(1);'
-                    print r'        }'
-                    print r'        return;'
-                    print r'    }'
-                    return
+        if interface is not None:
+            getDeviceRemovedReasonMethod = interface.getMethodByName("GetDeviceRemovedReason")
+            if getDeviceRemovedReasonMethod is not None:
+                print r'        if (_result == DXGI_ERROR_DEVICE_REMOVED) {'
+                print r'            HRESULT _reason = _this->GetDeviceRemovedReason();'
+                print r'            retrace::failed(call, _reason);'
+                print r'            exit(EXIT_FAILURE);'
+                print r'        }'
 
-        Retracer.checkResult(self, interface, methodOrFunction)
+        Retracer.handleFailure(self, interface, methodOrFunction)
 
     def forceDriver(self, enum):
         # This can only work when pAdapter is NULL. For non-NULL pAdapter we
@@ -326,6 +320,15 @@ class D3DRetracer(Retracer):
             print r'        return;'
             print r'    }'
 
+        if method.name == 'GetData':
+            print r'    pData = _allocator.alloc(DataSize);'
+            print r'    do {'
+            self.doInvokeInterfaceMethod(interface, method)
+            print r'        GetDataFlags = 0; // Prevent infinite loop'
+            print r'    } while (_result == S_FALSE);'
+            self.checkResult(interface, method)
+            print r'    return;'
+
         Retracer.invokeInterfaceMethod(self, interface, method)
 
         if method.name in ('AcquireSync', 'ReleaseSync'):
@@ -356,10 +359,8 @@ class D3DRetracer(Retracer):
                 # Prevent false warnings on 1D and 2D resources, since the
                 # pitches are often junk there...
                 print '        _normalizeMap(pResource, pMappedResource);'
-                self.checkPitchMismatch(method)
             else:
                 print '        _pbData = _MapDesc.pData;'
-                self.checkPitchMismatch(method)
             print '    } else {'
             print '        return;'
             print '    }'
@@ -390,6 +391,52 @@ class D3DRetracer(Retracer):
             print r'    if (retrace::dumpingState && SUCCEEDED(_result)) {'
             print r'        (*%s)->SetPrivateData(d3dstate::GUID_D3DSTATE, BytecodeLength, pShaderBytecode);' % ppShader.name
             print r'    }'
+
+    def retraceInterfaceMethodBody(self, interface, method):
+        Retracer.retraceInterfaceMethodBody(self, interface, method)
+
+        # Add pitch swizzling information to the region
+        if method.name == 'Map' and interface.name not in ('ID3D10Buffer', 'ID3D10Texture1D'):
+            if interface.name.startswith('ID3D11DeviceContext'):
+                outArg = method.getArgByName('pMappedResource')
+                memberNames = ('pData', 'RowPitch', 'DepthPitch')
+            elif interface.name.startswith('ID3D10'):
+                outArg = method.args[-1]
+                memberNames = ('pData', 'RowPitch', 'DepthPitch')
+            elif interface.name == 'IDXGISurface':
+                outArg = method.getArgByName('pLockedRect')
+                memberNames = ('pBits', 'Pitch', None)
+            else:
+                raise NotImplementedError
+            struct = outArg.type.type
+            dataMemberName, rowPitchMemberName, depthPitchMemberName = memberNames
+            dataMemberIndex = struct.getMemberByName(dataMemberName)
+            rowPitchMemberIndex = struct.getMemberByName(rowPitchMemberName)
+            print r'    if (_pbData && %s->%s != 0) {' % (outArg.name, rowPitchMemberName)
+            print r'        const trace::Array *_%s = call.arg(%u).toArray();' % (outArg.name, outArg.index)
+            print r'        if (%s) {' % outArg.name
+            print r'            const trace::Struct *_struct = _%s->values[0]->toStruct();' % (outArg.name)
+            print r'            if (_struct) {'
+            print r'                unsigned long long traceAddress = _struct->members[%u]->toUIntPtr();' % dataMemberIndex
+            print r'                int traceRowPitch = _struct->members[%u]->toSInt();' % rowPitchMemberIndex
+            print r'                int realRowPitch = %s->%s;' % (outArg.name, rowPitchMemberName)
+            print r'                if (realRowPitch && traceRowPitch != realRowPitch) {'
+            print r'                    retrace::setRegionPitch(traceAddress, 2, traceRowPitch, realRowPitch);'
+            print r'                }'
+            try:
+                depthPitchMemberIndex = struct.getMemberByName(depthPitchMemberName)
+            except ValueError:
+                assert len(struct.members) < 3
+                pass
+            else:
+                assert depthPitchMemberName == 'DepthPitch'
+                print r'                if (%s->DepthPitch) {' % outArg.name
+                print r'                    retrace::checkMismatch(call, "DepthPitch", _struct->members[%u], %s->DepthPitch);' % (struct.getMemberByName('DepthPitch'), outArg.name)
+                print r'                }'
+            print r'            }'
+            print r'        }'
+            print r'    }'
+
 
     def extractArg(self, function, arg, arg_type, lvalue, rvalue):
         # Set object names
@@ -427,6 +474,7 @@ def main():
     print r'#include "d3d11size.hpp"'
     print r'#include "dcompimports.hpp"'
     print r'#include "d3dstate.hpp"'
+    print r'#include "d3d9imports.hpp" // D3DERR_WASSTILLDRAWING'
     print
     print '''static d3dretrace::D3DDumper<IDXGISwapChain> dxgiDumper;'''
     print '''static d3dretrace::D3DDumper<ID3D10Device> d3d10Dumper;'''

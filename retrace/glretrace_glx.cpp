@@ -197,9 +197,10 @@ static void retrace_glXMakeContextCurrent(trace::Call &call) {
     }
 
     glws::Drawable *new_drawable = getDrawable(call.arg(1).toUInt());
+    glws::Drawable *new_readable = getDrawable(call.arg(2).toUInt());
     Context *new_context = getContext(call.arg(3).toUIntPtr());
 
-    glretrace::makeCurrent(call, new_drawable, new_context);
+    glretrace::makeCurrent(call, new_drawable, new_readable, new_context);
 }
 
 const retrace::Entry glretrace::glx_callbacks[] = {
@@ -266,8 +267,10 @@ const retrace::Entry glretrace::glx_callbacks[] = {
     {"glXMakeCurrent", &retrace_glXMakeCurrent},
     {"glXQueryChannelDeltasSGIX", &retrace::ignore},
     {"glXQueryChannelRectSGIX", &retrace::ignore},
-    {"glXQueryContextInfoEXT", &retrace::ignore},
     {"glXQueryContext", &retrace::ignore},
+    {"glXQueryContextInfoEXT", &retrace::ignore},
+    {"glXQueryCurrentRendererIntegerMESA", &retrace::ignore},
+    {"glXQueryCurrentRendererStringMESA", &retrace::ignore},
     {"glXQueryDrawable", &retrace::ignore},
     {"glXQueryExtension", &retrace::ignore},
     {"glXQueryExtensionsString", &retrace::ignore},
@@ -275,6 +278,8 @@ const retrace::Entry glretrace::glx_callbacks[] = {
     {"glXQueryGLXPbufferSGIX", &retrace::ignore},
     {"glXQueryMaxSwapBarriersSGIX", &retrace::ignore},
     {"glXQueryMaxSwapGroupsNV", &retrace::ignore},
+    {"glXQueryRendererIntegerMESA", &retrace::ignore},
+    {"glXQueryRendererStringMESA", &retrace::ignore},
     {"glXQueryServerString", &retrace::ignore},
     {"glXQuerySwapGroupNV", &retrace::ignore},
     {"glXQueryVersion", &retrace::ignore},

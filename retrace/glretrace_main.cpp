@@ -38,6 +38,7 @@
 #include "os_time.hpp"
 #include "os_memory.hpp"
 #include "highlight.hpp"
+#include "metric_writer.hpp"
 
 /* Synchronous debug output may reduce performance however,
  * without it the callNo in the callback may be inaccurate
@@ -287,11 +288,11 @@ beginProfile(trace::Call &call, bool isDraw) {
                                                program,
                                                call.sig->name};
                 if (profilingBoundaries[QUERY_BOUNDARY_CALL]) {
-                    profiler.addQuery(QUERY_BOUNDARY_CALL, eventId, &callData);
+                    profiler().addQuery(QUERY_BOUNDARY_CALL, eventId, &callData);
                 }
                 if (isDraw && profilingBoundaries[QUERY_BOUNDARY_DRAWCALL]) {
                     eventId = profilingBoundariesIndex[QUERY_BOUNDARY_DRAWCALL]++;
-                    profiler.addQuery(QUERY_BOUNDARY_DRAWCALL, eventId, &callData);
+                    profiler().addQuery(QUERY_BOUNDARY_DRAWCALL, eventId, &callData);
                 }
             }
         }
@@ -430,6 +431,11 @@ initContext() {
     glretrace::Context *currentContext = glretrace::getCurrentContext();
     assert(currentContext);
 
+#if defined(__APPLE__)
+    std::cerr << "GL_RENDERER: " << (const char *)glGetString(GL_RENDERER) << std::endl;
+    std::cerr << "GL_VENDOR: " << (const char *)glGetString(GL_VENDOR) << std::endl;
+#endif
+
     /* Ensure we have adequate extension support */
     glfeatures::Profile currentProfile = currentContext->actualProfile();
     supportsTimestamp   = currentProfile.versionGreaterOrEqual(glfeatures::API_GL, 3, 3) ||
@@ -525,10 +531,10 @@ frame_complete(trace::Call &call) {
                 // frame end indicator
                 ProfilerCall::data callData = {true, 0, 0, ""};
                 if (profilingBoundaries[QUERY_BOUNDARY_CALL]) {
-                    profiler.addQuery(QUERY_BOUNDARY_CALL, 0, &callData);
+                    profiler().addQuery(QUERY_BOUNDARY_CALL, 0, &callData);
                 }
                 if (profilingBoundaries[QUERY_BOUNDARY_DRAWCALL]) {
-                    profiler.addQuery(QUERY_BOUNDARY_DRAWCALL, 0, &callData);
+                    profiler().addQuery(QUERY_BOUNDARY_DRAWCALL, 0, &callData);
                 }
             }
         }
@@ -537,7 +543,7 @@ frame_complete(trace::Call &call) {
         }
         if (profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
             if (isLastPass() && curMetricBackend) {
-                profiler.addQuery(QUERY_BOUNDARY_FRAME,
+                profiler().addQuery(QUERY_BOUNDARY_FRAME,
                         profilingBoundariesIndex[QUERY_BOUNDARY_FRAME]++);
             }
         }
@@ -792,12 +798,20 @@ debugOutputCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
 
 class GLDumper : public retrace::Dumper {
 public:
+    int
+    getSnapshotCount(void) override {
+        if (!glretrace::getCurrentContext()) {
+            return 0;
+        }
+        return glstate::getDrawBufferImageCount();
+    }
+
     image::Image *
-    getSnapshot(void) override {
+    getSnapshot(int n) override {
         if (!glretrace::getCurrentContext()) {
             return NULL;
         }
-        return glstate::getDrawBufferImage();
+        return glstate::getDrawBufferImage(n);
     }
 
     bool
@@ -864,7 +878,7 @@ retrace::finishRendering(void) {
     }
     if (glretrace::profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
         if (glretrace::isLastPass() && glretrace::curMetricBackend) {
-            glretrace::profiler.addQuery(QUERY_BOUNDARY_FRAME,
+            glretrace::profiler().addQuery(QUERY_BOUNDARY_FRAME,
                     glretrace::profilingBoundariesIndex[QUERY_BOUNDARY_FRAME]++);
         }
     }
@@ -882,13 +896,13 @@ retrace::finishRendering(void) {
 
         if (glretrace::isLastPass()) {
             if (glretrace::profilingBoundaries[QUERY_BOUNDARY_FRAME]) {
-                glretrace::profiler.writeAll(QUERY_BOUNDARY_FRAME);
+                glretrace::profiler().writeAll(QUERY_BOUNDARY_FRAME);
             }
             if (glretrace::profilingBoundaries[QUERY_BOUNDARY_CALL]) {
-                glretrace::profiler.writeAll(QUERY_BOUNDARY_CALL);
+                glretrace::profiler().writeAll(QUERY_BOUNDARY_CALL);
             }
             if (glretrace::profilingBoundaries[QUERY_BOUNDARY_DRAWCALL]) {
-                glretrace::profiler.writeAll(QUERY_BOUNDARY_DRAWCALL);
+                glretrace::profiler().writeAll(QUERY_BOUNDARY_DRAWCALL);
             }
         }
     }

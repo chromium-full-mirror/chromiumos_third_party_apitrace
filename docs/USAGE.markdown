@@ -2,11 +2,11 @@
 
 Run the application you want to trace as
 
-    apitrace trace --api API /path/to/application [args...]
+    apitrace trace --api [gl|egl|d3d7|d3d8|d3d9|dxgi] /path/to/application [args...]
 
 and it will generate a trace named `application.trace` in the current
 directory.  You can specify the written trace filename by passing the
-`--output` command line option.
+`--output` command line option. The default API is `gl` if none is specified.
 
 Problems while tracing (e.g, if the application uses calls/parameters
 unsupported by apitrace) will be reported via stderr output on Unices.  On
@@ -136,12 +136,6 @@ If you are an application developer, you can avoid this either by linking with
 
 See the `ld.so` man page for more information about `LD_PRELOAD` and
 `LD_LIBRARY_PATH` environment flags.
-
-### Android ###
-
-To trace standalone native OpenGL ES applications, use
-`LD_PRELOAD=/path/to/egltrace.so /path/to/application` as described in the
-previous section.  To trace Java applications, refer to Android.markdown.
 
 ### Mac OS X ###
 
@@ -384,12 +378,6 @@ If you need precise control over which calls to trim you can specify the
 individual call numbers in a plain text file, as described in the 'Call sets'
 section above.
 
-There is also experimental support for automatically trimming the calls
-necessary for a given frame or call:
-
-    apitrace trim-auto --calls=12345 -o trimed.trace application.trace
-    apitrace trim-auto --frames=12345 -o trimed.trace application.trace
-
 
 ## Profiling a trace ##
 
@@ -561,6 +549,6 @@ system configuration:
 
 2. The target host must have a functional glretrace binary available
 
-3. The target host must have access to <trace-file> at the same path
-   in the filesystem as the <trace-file> path on the host system being
+3. The target host must have access to `trace-file` at the same path
+   in the filesystem as the `trace-file` path on the host system being
    passed to the qapitrace command line.

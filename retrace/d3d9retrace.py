@@ -147,6 +147,10 @@ class D3DRetracer(Retracer):
             print r'        DeviceType = D3DDEVTYPE_HAL;'
             print r'        break;'
             print r'    case retrace::DRIVER_SOFTWARE:'
+            print r'        BehaviorFlags &= ~D3DCREATE_PUREDEVICE;'
+            print r'        BehaviorFlags &= ~D3DCREATE_HARDWARE_VERTEXPROCESSING;'
+            print r'        BehaviorFlags |= D3DCREATE_SOFTWARE_VERTEXPROCESSING;'
+            print r'        break;'
             print r'    case retrace::DRIVER_REFERENCE:'
             print r'        DeviceType = D3DDEVTYPE_REF;'
             print r'        break;'
@@ -228,23 +232,22 @@ class D3DRetracer(Retracer):
 
         Retracer.invokeInterfaceMethod(self, interface, method)
 
-        if method.name in self.createDeviceMethodNames:
-            print r'    if (FAILED(_result)) {'
-            print r'        exit(1);'
-            print r'    }'
-
         # process events after presents
         if method.name == 'Present':
             print r'    d3dretrace::processEvents();'
 
         def mapping_subkey():
-            if 'Level' in method.argNames():
+            # A single texture object might have multiple mappings.  This key
+            # allows to tell them apart.
+            if 'FaceType' in method.argNames():
+                return ('static_cast<UINT>(FaceType) + Level*6',)
+            elif 'Level' in method.argNames():
                 return ('Level',)
             else:
                 return ('0',)
 
         if method.name in ('Lock', 'LockRect', 'LockBox'):
-            print '    VOID *_pbData = NULL;'
+            print '    VOID *_pbData = nullptr;'
             print '    size_t _MappedSize = 0;'
             if method.name == 'Lock':
                 # Ignore D3DLOCK_READONLY for buffers.
@@ -262,12 +265,12 @@ class D3DRetracer(Retracer):
             print '    }'
         
         if method.name in ('Unlock', 'UnlockRect', 'UnlockBox'):
-            print '    VOID *_pbData = 0;'
+            print '    VOID *_pbData = nullptr;'
             print '    MappingKey _mappingKey(_this, %s);' % mapping_subkey()
             print '    _pbData = _maps[_mappingKey];'
             print '    if (_pbData) {'
             print '        retrace::delRegionByPointer(_pbData);'
-            print '        _maps[_mappingKey] = 0;'
+            print '        _maps[_mappingKey] = nullptr;'
             print '    }'
 
         if interface.name == 'IDirectXVideoDecoder':
@@ -280,8 +283,21 @@ class D3DRetracer(Retracer):
                 print '    void *_pBuffer = _maps[_mappingKey];'
                 print '    if (_pBuffer) {'
                 print '        retrace::delRegionByPointer(_pBuffer);'
-                print '        _maps[_mappingKey] = 0;'
+                print '        _maps[_mappingKey] = nullptr;'
                 print '    }'
+
+    def handleFailure(self, interface, methodOrFunction):
+        if methodOrFunction.name in self.createDeviceMethodNames:
+            print r'        exit(EXIT_FAILURE);'
+            return
+
+        # https://msdn.microsoft.com/en-us/library/windows/desktop/bb324479.aspx
+        if methodOrFunction.name in ('Present', 'PresentEx'):
+            print r'        if (_result == D3DERR_DEVICELOST) {'
+            print r'            exit(EXIT_FAILURE);'
+            print r'        }'
+
+        Retracer.handleFailure(self, interface, methodOrFunction)
 
 
 def main():

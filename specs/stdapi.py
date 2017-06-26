@@ -335,6 +335,10 @@ class Struct(Type):
     def visit(self, visitor, *args, **kwargs):
         return visitor.visitStruct(self, *args, **kwargs)
 
+    def getMemberByName(self, name):
+        memberNames = [memberName for memberType, memberName in self.members]
+        return memberNames.index(name)
+
 
 def Union(kindExpr, kindTypes, contextLess=True):
     switchTypes = []
@@ -752,7 +756,7 @@ class Rebuilder(Visitor):
         if pointer_type is pointer.type:
             return pointer
         else:
-            return LinearPointer(pointer_type)
+            return LinearPointer(pointer_type, self.size)
 
     def visitReference(self, reference):
         reference_type = self.visit(reference.type)

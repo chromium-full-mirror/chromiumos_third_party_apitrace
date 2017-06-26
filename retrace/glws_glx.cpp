@@ -42,6 +42,8 @@ static bool has_GLX_ARB_create_context = false;
 static bool has_GLX_ARB_create_context_profile = false;
 static bool has_GLX_EXT_create_context_es_profile = false;
 static bool has_GLX_EXT_create_context_es2_profile = false;
+static bool has_GLX_EXT_swap_control = false;
+static bool has_GLX_MESA_swap_control = false;
 
 
 class GlxVisual : public Visual
@@ -82,6 +84,9 @@ public:
         else {
             window = createWindow(visinfo, name, width, height);
             drawable = glXCreateWindow(display, glxvisual->fbconfig, window, NULL);
+            if (has_GLX_EXT_swap_control) {
+                glXSwapIntervalEXT(display, drawable, 0);
+            }
         }
 
         glXWaitX();
@@ -107,11 +112,6 @@ public:
         }
 
         glXWaitGL();
-
-        // We need to ensure that pending events are processed here, and XSync
-        // with discard = True guarantees that, but it appears the limited
-        // event processing we do so far is sufficient
-        //XSync(display, True);
 
         Drawable::resize(w, h);
 
@@ -145,6 +145,11 @@ public:
 
     void swapBuffers(void) override {
         assert(!pbuffer);
+        if (window &&
+            !has_GLX_EXT_swap_control &&
+            has_GLX_MESA_swap_control) {
+            glXSwapIntervalMESA(0);
+        }
         glXSwapBuffers(display, drawable);
         if (window) {
             processKeys(window);
@@ -222,6 +227,8 @@ init(void) {
     CHECK_EXTENSION(GLX_ARB_create_context_profile);
     CHECK_EXTENSION(GLX_EXT_create_context_es_profile);
     CHECK_EXTENSION(GLX_EXT_create_context_es2_profile);
+    CHECK_EXTENSION(GLX_EXT_swap_control);
+    CHECK_EXTENSION(GLX_MESA_swap_control);
 
 #undef CHECK_EXTENSION
 }
@@ -241,10 +248,10 @@ createVisual(bool doubleBuffer, unsigned samples, Profile profile) {
     Attributes<int> attribs;
     attribs.add(GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT);
     attribs.add(GLX_RENDER_TYPE, GLX_RGBA_BIT);
-    attribs.add(GLX_RED_SIZE, 1);
-    attribs.add(GLX_GREEN_SIZE, 1);
-    attribs.add(GLX_BLUE_SIZE, 1);
-    attribs.add(GLX_ALPHA_SIZE, 1);
+    attribs.add(GLX_RED_SIZE, 8);
+    attribs.add(GLX_GREEN_SIZE, 8);
+    attribs.add(GLX_BLUE_SIZE, 8);
+    attribs.add(GLX_ALPHA_SIZE, 8);
     attribs.add(GLX_DOUBLEBUFFER, doubleBuffer ? GL_TRUE : GL_FALSE);
     attribs.add(GLX_DEPTH_SIZE, 1);
     attribs.add(GLX_STENCIL_SIZE, 1);
@@ -359,12 +366,18 @@ createContext(const Visual *_visual, Context *shareContext, bool debug)
 }
 
 bool
-makeCurrentInternal(Drawable *drawable, Context *context)
+makeCurrentInternal(Drawable *drawable, Drawable *readable, Context *context)
 {
     Window draw = None;
     if (drawable) {
         GlxDrawable *glxDrawable = static_cast<GlxDrawable *>(drawable);
         draw = glxDrawable->drawable;
+    }
+
+    Window read = None;
+    if (readable) {
+        GlxDrawable *glxReadable = static_cast<GlxDrawable *>(readable);
+        read = glxReadable->drawable;
     }
 
     GLXContext ctx = nullptr;
@@ -373,7 +386,12 @@ makeCurrentInternal(Drawable *drawable, Context *context)
         ctx = glxContext->context;
     }
 
-    return glXMakeCurrent(display, draw, ctx);
+    // We assume all GLX implementations support GLX 1.3 and the
+    // glXMakeContextCurrent() function.  But only call it when needed.
+    if (read != draw)
+        return glXMakeContextCurrent(display, draw, read, ctx);
+    else
+        return glXMakeCurrent(display, draw, ctx);
 }
 
 Window

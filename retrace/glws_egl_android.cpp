@@ -377,12 +377,12 @@ createVisual(bool doubleBuffer, unsigned samples, Profile profile) {
 
     Attributes<EGLint> attribs;
     attribs.add(EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
-    attribs.add(EGL_RED_SIZE, 1);
-    attribs.add(EGL_GREEN_SIZE, 1);
-    attribs.add(EGL_BLUE_SIZE, 1);
-    attribs.add(EGL_ALPHA_SIZE, 1);
-    attribs.add(EGL_DEPTH_SIZE, 1);
-    attribs.add(EGL_STENCIL_SIZE, 1);
+    attribs.add(EGL_RED_SIZE, 8);
+    attribs.add(EGL_GREEN_SIZE, 8);
+    attribs.add(EGL_BLUE_SIZE, 8);
+    attribs.add(EGL_ALPHA_SIZE, 8);
+    attribs.add(EGL_DEPTH_SIZE, 24);
+    attribs.add(EGL_STENCIL_SIZE, 8);
     attribs.add(EGL_RENDERABLE_TYPE, api_bits);
     attribs.end(EGL_NONE);
 
@@ -513,12 +513,13 @@ createContext(const Visual *_visual, Context *shareContext, bool debug)
 }
 
 bool
-makeCurrentInternal(Drawable *drawable, Context *context)
+makeCurrentInternal(Drawable *drawable, Drawable *readable, Context *context)
 {
     if (!drawable || !context) {
         return eglMakeCurrent(eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     } else {
         EglDrawable *eglDrawable = static_cast<EglDrawable *>(drawable);
+        EglDrawable *eglReadable = static_cast<EglDrawable *>(readable);
         EglContext *eglContext = static_cast<EglContext *>(context);
         EGLBoolean ok;
 
@@ -526,10 +527,11 @@ makeCurrentInternal(Drawable *drawable, Context *context)
         bindAPI(api);
 
         ok = eglMakeCurrent(eglDisplay, eglDrawable->surface,
-                            eglDrawable->surface, eglContext->context);
+                            eglReadable->surface, eglContext->context);
 
         if (ok) {
             eglDrawable->api = api;
+            eglReadable->api = api;
         }
 
         return ok;

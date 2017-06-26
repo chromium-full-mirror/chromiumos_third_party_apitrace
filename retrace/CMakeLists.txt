@@ -72,7 +72,8 @@ add_library (glretrace_common STATIC
     glretrace_cgl.cpp
     glretrace_glx.cpp
     glretrace_wgl.cpp
-    glretrace_wgl_font.cpp
+    glretrace_wgl_font_bitmaps.cpp
+    glretrace_wgl_font_outlines.cpp
     glretrace_egl.cpp
     glretrace_main.cpp
     glretrace_ws.cpp
@@ -129,6 +130,12 @@ if (WIN32 OR APPLE OR X11_FOUND)
                 "-framework Cocoa"
                 "-framework ApplicationServices" # CGS*
                 #"-framework OpenGL" # CGL*
+            )
+
+            # Bundle Info.plist
+            set_target_properties (glretrace PROPERTIES
+                LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
+                LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist"
             )
         else ()
             target_link_libraries (glretrace ${X11_X11_LIB})
