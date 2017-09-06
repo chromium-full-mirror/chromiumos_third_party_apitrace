@@ -1,8 +1,8 @@
-apitrace (7.1+git20170623.d38a69d6+repack-2) UNRELEASED; urgency=medium
+apitrace (7.1+git20170623.d38a69d6+repack-2) unstable; urgency=medium
 
   * fix-gcc7-ftbfs.diff: Fix build with gcc7. (Closes: #871158)
 
- -- Timo Aaltonen <tjaalton@debian.org>  Wed, 06 Sep 2017 16:47:44 +0300
+ -- Timo Aaltonen <tjaalton@debian.org>  Wed, 06 Sep 2017 17:10:50 +0300
 
 apitrace (7.1+git20170623.d38a69d6+repack-1) unstable; urgency=medium
 
