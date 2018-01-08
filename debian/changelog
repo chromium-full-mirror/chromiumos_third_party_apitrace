@@ -1,4 +1,4 @@
-apitrace (7.1+git20170623.d38a69d6+repack-3) UNRELEASED; urgency=medium
+apitrace (7.1+git20170623.d38a69d6+repack-3) unstable; urgency=medium
 
   * control: Migrate to python-pil. (Closes: #866414)
 
