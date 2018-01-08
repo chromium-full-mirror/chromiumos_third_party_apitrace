@@ -32,7 +32,7 @@ Depends:
  ${misc:Depends},
  apitrace-tracers (= ${binary:Version}),
  python,
- python-imaging,
+ python-pil,
 Description: tools for debugging OpenGL applications and drivers - cli frontends
  apitrace is a suite of tools for debugging OpenGL applications and drivers.
  It includes a tool to generate a trace of all the OpenGL calls an application

@@ -1,3 +1,9 @@
+apitrace (7.1+git20170623.d38a69d6+repack-3) UNRELEASED; urgency=medium
+
+  * control: Migrate to python-pil. (Closes: #866414)
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Mon, 08 Jan 2018 10:00:54 +0200
+
 apitrace (7.1+git20170623.d38a69d6+repack-2) unstable; urgency=medium
 
   * fix-gcc7-ftbfs.diff: Fix build with gcc7. (Closes: #871158)
