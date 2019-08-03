@@ -35,6 +35,8 @@ add_executable (apitrace
     cli_sed.cpp
     cli_trace.cpp
     cli_trim.cpp
+    cli_trim_auto.cpp
+    cli_trim_auto_analyzer.cpp
     cli_info.cpp
     cli_resources.cpp
 )
