@@ -1,6 +1,19 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: apitrace
 Source: https://github.com/apitrace/apitrace
+Files-Excluded: thirdparty/devcon
+                thirdparty/directxtex
+                thirdparty/dxerr
+                thirdparty/dxsdk_aug2007
+                thirdparty/getopt
+                thirdparty/gtest
+                thirdparty/libbacktrace
+                thirdparty/libpng
+                thirdparty/md5
+                thirdparty/mhook
+                thirdparty/mingw
+                thirdparty/snappy
+                thirdparty/zlib
 
 Files: *
 Copyright: © 2011 Jose Fonseca, Zack Rusin
