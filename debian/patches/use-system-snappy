@@ -6,11 +6,9 @@ Description: Use system libsnappy for retracers
 Forwarded: not-needed
 Author: Christopher James Halse Rogers <raof@ubuntu.com>
 
-Index: apitrace/CMakeLists.txt
-===================================================================
---- apitrace.orig/CMakeLists.txt	2016-05-31 17:27:56.392706958 +1000
-+++ apitrace/CMakeLists.txt	2016-05-31 17:28:20.812382053 +1000
-@@ -441,10 +441,10 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -476,10 +476,10 @@ if (NOT ENABLE_STATIC_SNAPPY)
      find_package (SNAPPY)
  endif ()
  if (ENABLE_STATIC_SNAPPY OR NOT SNAPPY_FOUND)
@@ -25,11 +23,9 @@ Index: apitrace/CMakeLists.txt
  endif ()
  include_directories (${SNAPPY_INCLUDE_DIRS})
  
-Index: apitrace/wrappers/CMakeLists.txt
-===================================================================
---- apitrace.orig/wrappers/CMakeLists.txt	2016-05-31 17:27:56.392706958 +1000
-+++ apitrace/wrappers/CMakeLists.txt	2016-05-31 17:27:56.392706958 +1000
-@@ -84,7 +84,7 @@
+--- a/wrappers/CMakeLists.txt
++++ b/wrappers/CMakeLists.txt
+@@ -79,7 +79,7 @@ target_link_libraries (trace
      common
      guids
      crc32c
