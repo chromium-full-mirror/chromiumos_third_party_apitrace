@@ -9,6 +9,7 @@ apitrace (8.0+repack-1) UNRELEASED; urgency=medium
   * fix-gcc7-ftbfs.diff: Dropped, not needed anymore.
   * control: Update the vcs urls.
   * control: Bump policy to 4.4.0.
+  * gbp.conf: Updated.
 
  -- Timo Aaltonen <tjaalton@debian.org>  Thu, 12 Sep 2019 11:33:12 +0300
 
