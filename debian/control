@@ -22,8 +22,8 @@ Build-Depends:
  libgtest-dev,
 Standards-Version: 4.0.0
 Homepage: https://apitrace.github.io
-Vcs-Git: git://git.debian.org/pkg-xorg/app/apitrace.git
-Vcs-Browser: http://git.debian.org/?p=pkg-xorg/app/apitrace.git;a=summary
+Vcs-Git: https://salsa.debian.org/xorg-team/apitrace.git
+Vcs-Browser: https://salsa.debian.org/xorg-team/app/apitrace
 
 Package: apitrace
 Architecture: any
