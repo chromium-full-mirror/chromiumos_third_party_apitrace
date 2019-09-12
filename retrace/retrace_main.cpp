@@ -270,6 +270,16 @@ takeSnapshot(unsigned call_no)
     snapshot_no++;
 }
 
+/**
+ * Check for timeout
+ */
+static bool
+isTimeout(long long cur_time, long long timeout_time, trace::Call *call) {
+    return (timeout_time != -1 &&
+           call->flags & trace::CALL_FLAG_END_FRAME) &&
+           cur_time >= timeout_time;
+}
+
 
 /**
  * Retrace one call.
@@ -314,9 +324,10 @@ private:
      * trace).
      */
     std::vector<RelayRunner*> runners;
+    long long timeout;
 
 public:
-    RelayRace();
+    RelayRace(long long _timeout);
 
     ~RelayRace();
 
@@ -356,6 +367,7 @@ private:
     RelayRace *race;
 
     unsigned leg;
+    long long timeout;
 
     os::mutex mutex;
     os::condition_variable wake_cond;
@@ -372,9 +384,10 @@ private:
     runnerThread(RelayRunner *_this);
 
 public:
-    RelayRunner(RelayRace *race, unsigned _leg) :
+    RelayRunner(RelayRace *race, unsigned _leg, long long _timeout) :
         race(race),
         leg(_leg),
+        timeout(_timeout),
         finished(false),
         baton(0)
     {
@@ -423,19 +436,21 @@ public:
     /**
      * Interpret successive calls.
      */
-    void
+
+   void
     runLeg(trace::Call *call) {
 
+        bool bTimeout = false;
         /* Consume successive calls for this thread. */
         do {
 
             assert(call);
             assert(call->thread_id == leg);
 
+            bTimeout = isTimeout(os::getTime(), timeout, call);
             retraceCall(call);
             delete call;
-            call = parser->parse_call();
-
+            call = bTimeout ? NULL : parser->parse_call();
         } while (call && call->thread_id == leg);
 
         if (call) {
@@ -492,8 +507,8 @@ RelayRunner::runnerThread(RelayRunner *_this) {
 }
 
 
-RelayRace::RelayRace() {
-    runners.push_back(new RelayRunner(this, 0));
+RelayRace::RelayRace(long long _timeout) : timeout(_timeout) {
+    runners.push_back(new RelayRunner(this, 0, timeout));
 }
 
 
@@ -521,7 +536,7 @@ RelayRace::getRunner(unsigned leg) {
         runner = runners[leg];
     }
     if (!runner) {
-        runner = new RelayRunner(this, leg);
+        runner = new RelayRunner(this, leg, timeout);
         runners[leg] = runner;
     }
     return runner;
@@ -593,22 +608,28 @@ RelayRace::stopRunners(void) {
 
 
 static void
-mainLoop() {
+mainLoop(long timeoutSeconds) {
     addCallbacks(retracer);
 
     long long startTime = 0;
+    long long timeoutTime;
     frameNo = 0;
 
     startTime = os::getTime();
+    timeoutTime = (timeoutSeconds == -1) ?
+        -1 :
+        startTime +  timeoutSeconds * os::timeFrequency;
 
     if (singleThread) {
         trace::Call *call;
-        while ((call = parser->parse_call())) {
+        bool bTimeout = false;
+        while (!bTimeout && (call = parser->parse_call())) {
+            bTimeout = isTimeout(os::getTime(), timeoutTime, call);
             retraceCall(call);
             delete call;
         }
     } else {
-        RelayRace race;
+        RelayRace race(timeoutTime);
         race.run();
     }
     finishRendering();
@@ -672,6 +693,7 @@ usage(const char *argv0) {
         "  -D, --dump-state=CALL   dump state at specific call no\n"
         "      --dump-format=FORMAT dump state format (`json` or `ubjson`)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
+        "      --timeout=N         specify retrace timeout in seconds\n"
         "      --loop[=N]          loop N times (N<0 continuously) replaying final frame.\n"
         "      --singlethread      use a single thread to replay command stream\n"
         "      --ignore-retvals    ignore return values in wglMakeCurrent, etc\n"
@@ -699,6 +721,7 @@ enum {
     GENPASS_OPT,
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
+    TIMEOUT_OPT,
     LOOP_OPT,
     SINGLETHREAD_OPT,
     IGNORE_RETVALS_OPT,
@@ -749,6 +772,7 @@ longOptions[] = {
     {"snapshot-threaded", no_argument, 0, 't'},
     {"verbose", no_argument, 0, 'v'},
     {"wait", no_argument, 0, 'w'},
+    {"timeout", required_argument, 0, TIMEOUT_OPT},
     {"loop", optional_argument, 0, LOOP_OPT},
     {"singlethread", no_argument, 0, SINGLETHREAD_OPT},
     {"ignore-retvals", no_argument, 0, IGNORE_RETVALS_OPT},
@@ -954,6 +978,7 @@ int main(int argc, char **argv)
 {
     using namespace retrace;
     int loopCount = 0;
+    long timeoutSeconds = -1;
     int i;
     bool snapshotThreaded = false;
 
@@ -1120,6 +1145,9 @@ int main(int argc, char **argv)
         case 'w':
             waitOnFinish = true;
             break;
+        case TIMEOUT_OPT:
+            timeoutSeconds = trace::intOption(optarg, -1);
+            break;
         case LOOP_OPT:
             loopCount = trace::intOption(optarg, -1);
             break;
@@ -1248,7 +1276,7 @@ int main(int argc, char **argv)
                 adjustProcessName(processNameIt->second);
             }
 
-            retrace::mainLoop();
+            retrace::mainLoop(timeoutSeconds);
 
             parser->close();
 
