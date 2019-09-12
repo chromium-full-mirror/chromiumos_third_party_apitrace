@@ -1,0 +1,86 @@
+Source: apitrace
+Section: graphics
+Priority: optional
+Maintainer: Debian X Strike Force <debian-x@lists.debian.org>
+Uploaders: Christopher James Halse Rogers <raof@ubuntu.com>
+Build-Depends:
+ debhelper (>= 9),
+ cmake,
+ libgl1-mesa-dev,
+ libegl1-mesa-dev,
+ libgles2-mesa-dev,
+ libwaffle-dev,
+ qtbase5-dev,
+ libqt5webkit5-dev,
+ pkg-config,
+ python,
+ zlib1g-dev,
+ libsnappy-dev,
+ libpng-dev,
+ libbsd-dev,
+ libprocps-dev,
+ libgtest-dev,
+Standards-Version: 4.0.0
+Homepage: https://apitrace.github.io
+Vcs-Git: git://git.debian.org/pkg-xorg/app/apitrace.git
+Vcs-Browser: http://git.debian.org/?p=pkg-xorg/app/apitrace.git;a=summary
+
+Package: apitrace
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ apitrace-tracers (= ${binary:Version}),
+ python,
+ python-pil,
+Description: tools for debugging OpenGL applications and drivers - cli frontends
+ apitrace is a suite of tools for debugging OpenGL applications and drivers.
+ It includes a tool to generate a trace of all the OpenGL calls an application
+ makes and a tool for replaying these traces and inspecting the rendering and
+ OpenGL state during the program's execution.
+ .
+ This makes it useful for identifying the sources of graphical corruption in
+ OpenGL applications.
+ .
+ This package contains frontends for the apitrace tool, making it easy to trace
+ applications and replay, compare, profile, and modify existing traces.
+
+Package: apitrace-gui
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ apitrace (= ${binary:Version})
+Description: tools for debugging OpenGL applications and drivers - graphical frontend
+ apitrace is a suite of tools for debugging OpenGL applications and drivers.
+ It includes a tool to generate a trace of all the OpenGL calls an application
+ makes and a tool for replaying these traces and inspecting the rendering and
+ OpenGL state during the program's execution.
+ .
+ This makes it useful for identifying the sources of graphical corruption in
+ OpenGL applications.
+ .
+ This package contains a graphical frontend for the apitrace tool, making it
+ easy to trace applications and replay, compare, profile, and modify existing
+ traces.
+
+Package: apitrace-tracers
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Pre-Depends: ${misc:Pre-Depends}
+Multi-Arch: same
+Built-Using: ${built-using:Depends}
+Description: tools for debugging OpenGL applications and drivers - application tracer
+ apitrace is a suite of tools for debugging OpenGL applications and drivers.
+ It includes a tool to generate a trace of all the OpenGL calls an application
+ makes and a tool for replaying these traces and inspecting the rendering and
+ OpenGL state during the program's execution.
+ .
+ This makes it useful for identifying the sources of graphical corruption in
+ OpenGL applications.
+ .
+ This package contains the components required to trace the OpenGL calls made
+ by an application and record them into a trace file for later replay and
+ debugging.

@@ -1,0 +1,22 @@
+apitrace for Debian
+-------------------
+
+Upstream ships with embedded copies of zlib, libpng, libsnappy, and libqjson,
+and others. The tarball is repacked to remove these, except for libsnappy,
+as the current libsnappy.a shipped in libsnappy-dev isn't suitable for linking
+into a dynamically loaded object.
+
+The thirdparty/ directory also contains Khronos extension headers. These
+are used in preference to the system-wide headers to ensure that the tracer
+can proxy all the calls it knows about, not just those that the system's Mesa
+library knows about.
+
+The tracing wrappers in apitrace-gl-tracers are statically linked against
+zlib and libsnappy to limit the possibilities of symbol collisions. The
+tracers are LD_PRELOADed into the application to trace, which will frequently
+be a closed-source game.
+
+The frontends are dynamically linked as normal; they will frequently be replaying
+a trace provided by a third party.
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>, Sun, 18 May 2014 15:59:28 +1000

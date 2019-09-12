@@ -1,0 +1,32 @@
+Description: Use md5 implementation from system libbsd
+Forwarded: not-needed
+Author: Christopher James Halse Rogers <raof@ubuntu.com>
+
+Index: apitrace/CMakeLists.txt
+===================================================================
+--- apitrace.orig/CMakeLists.txt	2016-05-31 17:15:29.289315149 +1000
++++ apitrace/CMakeLists.txt	2016-05-31 17:15:29.285315183 +1000
+@@ -497,9 +497,7 @@
+     add_definitions (-DHAVE_BACKTRACE=1)
+ endif ()
+ 
+-add_subdirectory (thirdparty/md5)
+-set (MD5_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/md5)
+-set (MD5_LIBRARIES md5_bundled)
++set (MD5_LIBRARIES bsd)
+ 
+ # We use bundled headers for all Khronos APIs, to guarantee support for both
+ # OpenGL and OpenGL ES at build time, because the OpenGL and OpenGL ES 1 APIs
+Index: apitrace/lib/image/image_md5.cpp
+===================================================================
+--- apitrace.orig/lib/image/image_md5.cpp	2016-05-31 17:15:29.289315149 +1000
++++ apitrace/lib/image/image_md5.cpp	2016-05-31 17:15:29.285315183 +1000
+@@ -28,7 +28,7 @@
+ #include <fstream>
+ #include "image.hpp"
+ 
+-#include "md5.h"
++#include <bsd/md5.h>
+ 
+ 
+ using namespace std;

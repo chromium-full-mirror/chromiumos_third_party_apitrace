@@ -1,0 +1,66 @@
+apitrace (7.1+git20170623.d38a69d6+repack-3) unstable; urgency=medium
+
+  * control: Migrate to python-pil. (Closes: #866414)
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Mon, 08 Jan 2018 10:00:54 +0200
+
+apitrace (7.1+git20170623.d38a69d6+repack-2) unstable; urgency=medium
+
+  * fix-gcc7-ftbfs.diff: Fix build with gcc7. (Closes: #871158)
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Wed, 06 Sep 2017 17:10:50 +0300
+
+apitrace (7.1+git20170623.d38a69d6+repack-1) unstable; urgency=medium
+
+  [ Timo Aaltonen ]
+  * control: Drop libgles1-mesa-dev from build-depends. (Closes:
+    #855119)
+
+  [ Jordan Justen ]
+  * Team upload
+  * Reflow apitrace-gui description to fix lintian warning
+  * Ignore binary-without-manpage lintian warnings
+  * Upgrade Standards-Version to 4.0.0
+  * Change maintainer to Debian X Strike Force
+
+ -- Jordan Justen <jordan.l.justen@intel.com>  Thu, 22 Jun 2017 01:06:23 -0700
+
+apitrace (7.1+git20160531.2d78bef0+repack-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * d/rules: fix Built-Using using source package instead binary name.
+    (Closes: #826355)
+  * d/{control,rules}: enable waffle support.
+    (Closes: #826623)
+
+ -- Héctor Orón Martínez <zumbi@debian.org>  Thu, 09 Jun 2016 18:29:55 +0200
+
+apitrace (7.1+git20160531.2d78bef0+repack-1) unstable; urgency=medium
+
+  [ Christopher James Halse Rogers ]
+  * New upstream release (Closes: #823834)
+  * Acknowledge NMU. Thanks, Tobias Fost!
+  * debian/patches: refresh patches for new upstream version.
+  * debian/copyright:
+    + Remove thirdparty/snappy stanza; now stripped from tarball
+    + Add new thirdparty/brotli stanza
+    + Add new thirdparty/crc32c stanza
+  * debian/rules:
+    + Add Built-Using substitution for libsnappy-dev; we now use the packaged
+      -fPIC static archive.
+
+ -- Timo Aaltonen <tjaalton@debian.org>  Fri, 03 Jun 2016 09:58:02 +0300
+
+apitrace (6.1+git20150626.62ad71c6+repack-1.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * libpng1.6 Transition: Change B-D on libpng12-dev to libpng-dev only
+    (Closes: #819428)
+
+ -- Tobias Frost <tobi@debian.org>  Mon, 28 Mar 2016 14:41:54 +0200
+
+apitrace (6.1+git20150626.62ad71c6+repack-1) unstable; urgency=low
+
+  * Initial release (Closes: #636679)
+
+ -- Christopher James Halse Rogers <raof@ubuntu.com>  Fri, 26 Jun 2015 17:25:12 +1000

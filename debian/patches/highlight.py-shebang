@@ -1,0 +1,9 @@
+diff --git a/scripts/highlight.py b/scripts/highlight.py
+index ed3b54d4..cf0ddf5d 100644
+--- a/scripts/highlight.py
++++ b/scripts/highlight.py
+@@ -1,3 +1,4 @@
++#!/usr/bin/env python
+ #########################################################################
+ #
+ # Copyright 2011-2012 Jose Fonseca

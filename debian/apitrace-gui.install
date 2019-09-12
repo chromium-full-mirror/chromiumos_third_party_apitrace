@@ -1,0 +1,3 @@
+usr/bin/qapitrace
+
+debian/qapitrace.desktop usr/share/applications

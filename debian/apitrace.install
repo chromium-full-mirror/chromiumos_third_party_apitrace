@@ -1,0 +1,5 @@
+usr/bin/apitrace
+usr/bin/eglretrace
+usr/bin/glretrace
+
+usr/lib/apitrace

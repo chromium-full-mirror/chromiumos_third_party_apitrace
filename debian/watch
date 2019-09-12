@@ -1,0 +1,3 @@
+version=3
+opts="dversionmangle=s/\+repack//,filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/apitrace-$1\.tar\.gz/" \
+  https://github.com/apitrace/apitrace/tags .*/v?(\d\S*)\.tar\.gz

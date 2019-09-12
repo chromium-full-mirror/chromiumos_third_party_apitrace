@@ -1,0 +1,17 @@
+Description: Use system libbacktrace
+Forwarded: not-needed
+Author: Christopher James Halse Rogers <raof@ubuntu.com>
+
+Index: apitrace/CMakeLists.txt
+===================================================================
+--- apitrace.orig/CMakeLists.txt	2016-05-31 17:15:26.313340972 +1000
++++ apitrace/CMakeLists.txt	2016-05-31 17:15:26.309341009 +1000
+@@ -493,8 +493,6 @@
+ add_subdirectory (thirdparty/crc32c)
+ 
+ if (CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
+-    add_subdirectory (thirdparty/libbacktrace)
+-    include_directories (${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbacktrace)
+     set (LIBBACKTRACE_LIBRARIES ${CMAKE_DL_LIBS} backtrace)
+     add_definitions (-DHAVE_BACKTRACE=1)
+ endif ()
