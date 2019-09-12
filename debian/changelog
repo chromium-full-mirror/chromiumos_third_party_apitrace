@@ -3,6 +3,7 @@ apitrace (8.0+repack-1) UNRELEASED; urgency=medium
   * New upstream release.
   * copyright: Filter unwanted stuff from thirdparty/.
   * Bump debhelper to 12.
+  * rules: Use dh_missing.
 
  -- Timo Aaltonen <tjaalton@debian.org>  Thu, 12 Sep 2019 11:33:12 +0300
 
