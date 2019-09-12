@@ -20,7 +20,7 @@ Build-Depends:
  libbsd-dev,
  libprocps-dev,
  libgtest-dev,
-Standards-Version: 4.0.0
+Standards-Version: 4.4.0
 Homepage: https://apitrace.github.io
 Vcs-Git: https://salsa.debian.org/xorg-team/apitrace.git
 Vcs-Browser: https://salsa.debian.org/xorg-team/app/apitrace
