@@ -28,15 +28,9 @@ override_dh_missing:
 	dh_missing --fail-missing
 
 override_dh_gencontrol:
-	echo "built-using:Depends=zlib (= $(shell dpkg-query -s zlib1g-dev \
-                                               | grep Version: \
-                                               | cut -d' ' -f2 \
-                                               | sed 's/+.*//'))" \
+	dpkg-query -f 'built-using:Depends=$${source:Package} (= $${source:Version})\n' --show zlib1g-dev \
                 >> debian/apitrace-tracers.substvars
-	echo "built-using:Depends=snappy (= $(shell dpkg-query -s libsnappy-dev \
-                                               | grep Version: \
-                                               | cut -d' ' -f2 \
-                                               | sed 's/+.*//'))" \
+	dpkg-query -f 'built-using:Depends=$${source:Package} (= $${source:Version})\n' --show libsnappy-dev \
                 >> debian/apitrace-tracers.substvars
 	dh_gencontrol
 
