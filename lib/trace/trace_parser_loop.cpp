@@ -31,18 +31,19 @@ namespace trace {
 
 
 // Decorator for parser which loops
-class LastFrameLoopParser : public AbstractParser  {
+class LoopParser : public AbstractParser  {
 public:
-    LastFrameLoopParser(AbstractParser *p, int c) {
+    LoopParser(AbstractParser *p,
+               long loop_start_frame,
+               long loop_end_frame,
+               long loop_repeat_count) {
         parser = p;
-        loopCount = c;
-        starts_new_frame = true;
+        loopStartFrame = loop_start_frame;
+        loopEndFrame = loop_end_frame;
+        loopRepeatCount = loop_repeat_count;
     }
 
-    ~LastFrameLoopParser() {
-        for (auto c : lastFrameCalls)
-            delete c;
-        lastFrameCalls.clear();
+    ~LoopParser() {
         delete parser;
     }
 
@@ -56,52 +57,65 @@ public:
     unsigned long long getVersion(void) const override { return parser->getVersion(); }
     const Properties & getProperties(void) const override { return parser->getProperties(); }
 private:
-    int loopCount;
-    bool starts_new_frame;
+    unsigned long loopStartFrame;
+    unsigned long loopEndFrame;
+    unsigned long loopRepeatCount;
+    unsigned long curLoopIteration;
+    unsigned long curFrame;
+    bool frameEnded;
     AbstractParser *parser;
-    std::vector<Call *> lastFrameCalls;
-    std::vector<Call *>::iterator lastFrameIterator;
+    ParseBookmark loopStartFrameBookmark;
 };
 
 
 bool
-LastFrameLoopParser::open(const char *filename)
+LoopParser::open(const char *filename)
 {
-    return parser->open(filename);
+    bool ret = parser->open(filename);
+    if (ret) {
+        curFrame = 0;
+        curLoopIteration = 0;
+        frameEnded = true;
+    }
+    return ret;
 }
 
 Call *
-LastFrameLoopParser::parse_call(void)
+LoopParser::parse_call(void)
 {
     trace::Call *call;
-
     call = parser->parse_call();
 
-    /* Restart last frame when looping is requested. */
     if (call) {
-        if (starts_new_frame) {
-            for (auto c : lastFrameCalls)
-                delete c;
-            lastFrameCalls.clear();
+        if (frameEnded) {
+            ++curFrame;
+            frameEnded = false;
+            if (loopEndFrame && curFrame > loopEndFrame) {
+                if (curLoopIteration == loopRepeatCount) {
+                    return NULL;
+                }
+                curFrame = loopStartFrame;
+                parser->setBookmark(loopStartFrameBookmark);
+                call = parser->parse_call();
+            }
+            if (curFrame == loopStartFrame) {
+                if (curLoopIteration == 0) {
+                    parser->getBookmark(loopStartFrameBookmark);
+                }
+                ++curLoopIteration;
+            }
+      }
+        if (call->flags & trace::CALL_FLAG_END_FRAME) {
+            frameEnded = true;
         }
-
-        call->reuse_call = true;
-        lastFrameCalls.push_back(call);
-        starts_new_frame = call->flags & trace::CALL_FLAG_END_FRAME;
-
-        lastFrameIterator = lastFrameCalls.begin();
-
-        return call;
-    }
-
-    /* else */
-    if (loopCount) {
-        call = *lastFrameIterator;
-        ++lastFrameIterator;
-        if (lastFrameIterator == lastFrameCalls.end()) {
-            /* repeat the frame */
-            lastFrameIterator = lastFrameCalls.begin();
-            --loopCount;
+    } else {
+        if (loopRepeatCount == 0 || curLoopIteration < loopRepeatCount) {
+            if (curLoopIteration == loopRepeatCount) {
+                return NULL;
+            }
+            curFrame = loopStartFrame;
+            parser->setBookmark(loopStartFrameBookmark);
+            call = parser->parse_call();
         }
     }
 
@@ -110,9 +124,12 @@ LastFrameLoopParser::parse_call(void)
 
 
 AbstractParser *
-lastFrameLoopParser(AbstractParser *parser, int loopCount)
+loopParser(AbstractParser *parser,
+             unsigned long loop_start_frame,
+             unsigned long loop_end_frame,
+             unsigned long loop_repeat_count)
 {
-    return new LastFrameLoopParser(parser, loopCount);
+    return new LoopParser(parser, loop_start_frame, loop_end_frame, loop_repeat_count);
 }
 
 
