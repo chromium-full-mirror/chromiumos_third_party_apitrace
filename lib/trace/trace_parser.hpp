@@ -256,8 +256,10 @@ protected:
 
 
 AbstractParser *
-lastFrameLoopParser(AbstractParser *parser, int loopCount);
-
+loopParser(AbstractParser *parser,
+             unsigned long loop_start_frame,
+             unsigned long loop_end_frame,
+             unsigned long loop_repeat_count);
 
 } /* namespace trace */
 

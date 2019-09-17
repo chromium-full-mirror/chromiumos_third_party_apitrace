@@ -694,7 +694,9 @@ usage(const char *argv0) {
         "      --dump-format=FORMAT dump state format (`json` or `ubjson`)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
         "      --timeout=N         specify retrace timeout in seconds\n"
-        "      --loop[=N]          loop N times (N<0 continuously) replaying final frame.\n"
+        "      --loop-repeat-cnt=N loop N times replaying frames between specified in loop-begin and loop-end (0 for endless)\n"
+        "      --loop-begin=F      specify the begin frame for a loop (0 for last frame)\n"
+        "      --loop-end=F        specify the end frame for a loop (0 for last frame)\n"
         "      --singlethread      use a single thread to replay command stream\n"
         "      --ignore-retvals    ignore return values in wglMakeCurrent, etc\n"
         "      --no-context-check  don't check that the actual GL context version matches the requested version\n"
@@ -722,7 +724,9 @@ enum {
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
     TIMEOUT_OPT,
-    LOOP_OPT,
+    LOOP_REPEAT_CNT_OPT,
+    LOOP_BEGIN_OPT,
+    LOOP_END_OPT,
     SINGLETHREAD_OPT,
     IGNORE_RETVALS_OPT,
     NO_CONTEXT_CHECK,
@@ -773,7 +777,9 @@ longOptions[] = {
     {"verbose", no_argument, 0, 'v'},
     {"wait", no_argument, 0, 'w'},
     {"timeout", required_argument, 0, TIMEOUT_OPT},
-    {"loop", optional_argument, 0, LOOP_OPT},
+    {"loop-repeat-cnt", required_argument, 0, LOOP_REPEAT_CNT_OPT },
+    {"loop-begin", required_argument, 0, LOOP_BEGIN_OPT},
+    {"loop-end", required_argument, 0, LOOP_END_OPT},
     {"singlethread", no_argument, 0, SINGLETHREAD_OPT},
     {"ignore-retvals", no_argument, 0, IGNORE_RETVALS_OPT},
     {"no-context-check", no_argument, 0, NO_CONTEXT_CHECK},
@@ -977,7 +983,9 @@ extern "C"
 int main(int argc, char **argv)
 {
     using namespace retrace;
-    int loopCount = 0;
+    long loopRepeatCount = 0;
+    long loopBeginFrame = 1;
+    long loopEndFrame = 0;
     long timeoutSeconds = -1;
     int i;
     bool snapshotThreaded = false;
@@ -1148,8 +1156,26 @@ int main(int argc, char **argv)
         case TIMEOUT_OPT:
             timeoutSeconds = trace::intOption(optarg, -1);
             break;
-        case LOOP_OPT:
-            loopCount = trace::intOption(optarg, -1);
+        case LOOP_REPEAT_CNT_OPT:
+            loopRepeatCount = trace::intOption(optarg, 0);
+            if (loopRepeatCount < 0) {
+                std::cerr << "loop-repeat-cnt can't be negative" << std::endl;
+                return 1;
+            }
+            break;
+        case LOOP_BEGIN_OPT:
+            loopBeginFrame = trace::intOption(optarg, 1);
+            if (loopBeginFrame < 0) {
+                std::cerr << "loop-begin can't be negative" << std::endl;
+                return 1;
+            }
+            break;
+        case LOOP_END_OPT:
+             if (loopEndFrame < 0) {
+                std::cerr << "loop-end can't be negative" << std::endl;
+                return 1;
+            }
+            loopEndFrame = trace::intOption(optarg, 0);
             break;
         case PGPU_OPT:
             retrace::debug = 0;
@@ -1262,8 +1288,8 @@ int main(int argc, char **argv)
     {
         for (i = optind; i < argc; ++i) {
             parser = new trace::Parser;
-            if (loopCount) {
-                parser = lastFrameLoopParser(parser, loopCount);
+            if (loopRepeatCount) {
+                parser = loopParser(parser, loopBeginFrame, loopEndFrame, loopRepeatCount);
             }
 
             if (!parser->open(argv[i])) {
