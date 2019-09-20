@@ -34,14 +34,9 @@ namespace trace {
 class LoopParser : public AbstractParser  {
 public:
     LoopParser(AbstractParser *p,
-               long loop_start_frame,
-               long loop_end_frame,
-               long loop_repeat_count) {
-        parser = p;
-        loopStartFrame = loop_start_frame;
-        loopEndFrame = loop_end_frame;
-        loopRepeatCount = loop_repeat_count;
-    }
+               const FrameSpan &loop_span,
+               unsigned long loop_repeat_count)
+    : parser(p), loopSpan(loop_span), loopRepeatCount(loop_repeat_count) {}
 
     ~LoopParser() {
         delete parser;
@@ -57,16 +52,15 @@ public:
     unsigned long long getVersion(void) const override { return parser->getVersion(); }
     const Properties & getProperties(void) const override { return parser->getProperties(); }
 private:
-    unsigned long loopStartFrame;
-    unsigned long loopEndFrame;
-    unsigned long loopRepeatCount;
-    unsigned long curLoopIteration;
-    unsigned long curFrame;
-    bool frameEnded;
     AbstractParser *parser;
-    ParseBookmark loopStartFrameBookmark;
-};
+    FrameSpan      loopSpan;
+    unsigned long  loopRepeatCount;
 
+    unsigned long  curLoopIteration;
+    unsigned long  curFrame;
+    bool           frameEnded;
+    ParseBookmark  loopStartFrameBookmark;
+};
 
 bool
 LoopParser::open(const char *filename)
@@ -77,6 +71,7 @@ LoopParser::open(const char *filename)
         curLoopIteration = 0;
         frameEnded = true;
     }
+
     return ret;
 }
 
@@ -90,21 +85,21 @@ LoopParser::parse_call(void)
         if (frameEnded) {
             ++curFrame;
             frameEnded = false;
-            if (loopEndFrame && curFrame > loopEndFrame) {
+            if (loopSpan.end && curFrame > loopSpan.end) {
                 if (curLoopIteration == loopRepeatCount) {
                     return NULL;
                 }
-                curFrame = loopStartFrame;
+                curFrame = loopSpan.begin;
                 parser->setBookmark(loopStartFrameBookmark);
                 call = parser->parse_call();
             }
-            if (curFrame == loopStartFrame) {
+            if (curFrame == loopSpan.begin) {
                 if (curLoopIteration == 0) {
                     parser->getBookmark(loopStartFrameBookmark);
                 }
                 ++curLoopIteration;
             }
-      }
+        }
         if (call->flags & trace::CALL_FLAG_END_FRAME) {
             frameEnded = true;
         }
@@ -113,7 +108,7 @@ LoopParser::parse_call(void)
             if (curLoopIteration == loopRepeatCount) {
                 return NULL;
             }
-            curFrame = loopStartFrame;
+            curFrame = loopSpan.begin;
             parser->setBookmark(loopStartFrameBookmark);
             call = parser->parse_call();
         }
@@ -125,11 +120,10 @@ LoopParser::parse_call(void)
 
 AbstractParser *
 loopParser(AbstractParser *parser,
-             unsigned long loop_start_frame,
-             unsigned long loop_end_frame,
-             unsigned long loop_repeat_count)
+           const FrameSpan &loop_span,
+           unsigned long loop_repeat_count)
 {
-    return new LoopParser(parser, loop_start_frame, loop_end_frame, loop_repeat_count);
+    return new LoopParser(parser, loop_span, loop_repeat_count);
 }
 
 
