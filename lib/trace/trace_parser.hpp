@@ -271,11 +271,22 @@ protected:
 };
 
 
+struct FrameSpan {
+    typedef unsigned long frame_t;
+    FrameSpan(frame_t begin_, frame_t end_)
+    : begin(begin_), end(end_) {}
+    FrameSpan(const FrameSpan &other)
+    : begin(other.begin), end(other.end) {}
+    frame_t begin;
+    frame_t end;
+};
+
+typedef std::vector<FrameSpan> FrameSpanArray;
+
 AbstractParser *
 loopParser(AbstractParser *parser,
-             unsigned long loop_start_frame,
-             unsigned long loop_end_frame,
-             unsigned long loop_repeat_count);
+           const FrameSpan &loop_span,
+           unsigned long loop_repeat_count);
 
 } /* namespace trace */
 

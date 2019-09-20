@@ -1393,7 +1393,9 @@ int main(int argc, char **argv)
         for (i = optind; i < argc; ++i) {
             parser = new trace::Parser;
             if (loopRepeatCount) {
-                parser = loopParser(parser, loopBeginFrame, loopEndFrame, loopRepeatCount);
+                parser = loopParser(parser,
+                                    trace::FrameSpan(loopBeginFrame, loopEndFrame),
+                                    loopRepeatCount);
             }
 
             if (!parser->open(argv[i])) {
