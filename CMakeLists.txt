@@ -102,9 +102,9 @@ else ()
     endmacro()
 endif ()
 
-find_host_package (PythonInterp 2.7 REQUIRED)
-if (NOT PYTHON_VERSION_MAJOR EQUAL 2)
-    message (FATAL_ERROR "Python 2.x required and requested, but Python ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} found.")
+find_host_package (PythonInterp 3 REQUIRED)
+if (NOT PYTHON_VERSION_MAJOR EQUAL 3)
+    message (FATAL_ERROR "Python 3.x required and requested, but Python ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR} found.")
 endif ()
 
 find_package (Threads)
@@ -532,6 +532,7 @@ add_subdirectory (thirdparty/crc32c)
 if (CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
     add_subdirectory (thirdparty/libbacktrace)
     include_directories (${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbacktrace)
+    include_directories (${CMAKE_CURRENT_BINARY_DIR}/thirdparty/libbacktrace)
     set (LIBBACKTRACE_LIBRARIES ${CMAKE_DL_LIBS} backtrace)
     add_definitions (-DHAVE_BACKTRACE=1)
 endif ()
@@ -629,7 +630,7 @@ install (
     RENAME LICENSE.txt
 )
 
-set (CPACK_PACKAGE_VERSION_MAJOR "8")
+set (CPACK_PACKAGE_VERSION_MAJOR "9")
 set (CPACK_PACKAGE_VERSION_MINOR "0")
 
 # Use current date in YYYYMMDD format as patch number 

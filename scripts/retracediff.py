@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ##########################################################################
 #
 # Copyright 2011 Jose Fonseca
@@ -80,12 +80,12 @@ class Retracer:
             self.retraceExe,
         ] + args + self.args
         if self.env:
-            for name, value in self.env.iteritems():
+            for name, value in self.env.items():
                 sys.stderr.write('%s=%s ' % (name, value))
         sys.stderr.write(' '.join(cmd) + '\n')
         try:
             return subprocess.Popen(cmd, env=self.env, stdout=stdout, stderr=NULL)
-        except OSError, ex:
+        except OSError as ex:
             sys.stderr.write('error: failed to execute %s: %s\n' % (cmd[0], ex.strerror))
             sys.exit(1)
 
@@ -130,34 +130,34 @@ def read_pnm(stream):
     if not magic:
         return None, None
     magic = magic.rstrip()
-    if magic == 'P5':
+    if magic == b'P5':
         channels = 1
         bytesPerChannel = 1
         mode = 'L'
-    elif magic == 'P6':
+    elif magic == b'P6':
         channels = 3
         bytesPerChannel = 1
         mode = 'RGB'
-    elif magic == 'Pf':
+    elif magic == b'Pf':
         channels = 1
         bytesPerChannel = 4
         mode = 'R'
-    elif magic == 'PF':
+    elif magic == b'PF':
         channels = 3
         bytesPerChannel = 4
         mode = 'RGB'
-    elif magic == 'PX':
+    elif magic == b'PX':
         channels = 4
         bytesPerChannel = 4
         mode = 'RGB'
     else:
-        raise Exception('Unsupported magic `%s`' % magic)
-    comment = ''
+        raise Exception('Unsupported magic %r' % magic)
+    comment = b''
     line = stream.readline()
-    while line.startswith('#'):
+    while line.startswith(b'#'):
         comment += line[1:]
         line = stream.readline()
-    width, height = map(int, line.strip().split())
+    width, height = list(map(int, line.strip().split()))
     maximum = int(stream.readline().strip())
     if bytesPerChannel == 1:
         assert maximum == 255

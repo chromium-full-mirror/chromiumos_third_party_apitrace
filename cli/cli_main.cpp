@@ -78,7 +78,9 @@ static const Command * commands[] = {
     &retrace_command,
     &trace_command,
     &trim_command,
-    &help_command
+    &trim_auto_command,
+    &help_command,
+    &info_command
 };
 
 /* Aliases provide a mechanism to allow compatibility with old command

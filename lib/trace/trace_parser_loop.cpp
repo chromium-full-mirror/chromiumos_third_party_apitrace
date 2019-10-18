@@ -31,14 +31,14 @@ namespace trace {
 
 
 // Decorator for parser which loops
-class LastFrameLoopParser : public AbstractParser  {
+class LoopParser : public AbstractParser  {
 public:
-    LastFrameLoopParser(AbstractParser *p, int c) {
-        parser = p;
-        loopCount = c;
-    }
+    LoopParser(AbstractParser *p,
+               const FrameSpan &loop_span,
+               unsigned long loop_repeat_count)
+    : parser(p), loopSpan(loop_span), loopRepeatCount(loop_repeat_count) {}
 
-    ~LastFrameLoopParser() {
+    ~LoopParser() {
         delete parser;
     }
 
@@ -52,49 +52,65 @@ public:
     unsigned long long getVersion(void) const override { return parser->getVersion(); }
     const Properties & getProperties(void) const override { return parser->getProperties(); }
 private:
-    int loopCount;
     AbstractParser *parser;
-    ParseBookmark frameStart;
-    ParseBookmark lastFrameStart;
+    FrameSpan      loopSpan;
+    unsigned long  loopRepeatCount;
+
+    unsigned long  curLoopIteration;
+    unsigned long  curFrame;
+    bool           frameEnded;
+    ParseBookmark  loopStartFrameBookmark;
 };
 
-
 bool
-LastFrameLoopParser::open(const char *filename)
+LoopParser::open(const char *filename)
 {
     bool ret = parser->open(filename);
     if (ret) {
-        /* If the user wants to loop we need to get a bookmark target. We
-         * usually get this after replaying a call that ends a frame, but
-         * for a trace that has only one frame we need to get it at the
-         * beginning. */
-        parser->getBookmark(frameStart);
-        lastFrameStart = frameStart;
+        curFrame = 0;
+        curLoopIteration = 0;
+        frameEnded = true;
     }
+
     return ret;
 }
 
 Call *
-LastFrameLoopParser::parse_call(void)
+LoopParser::parse_call(void)
 {
     trace::Call *call;
-
     call = parser->parse_call();
 
-    /* Restart last frame when looping is requested. */
     if (call) {
-        lastFrameStart = frameStart;
+        if (frameEnded) {
+            ++curFrame;
+            frameEnded = false;
+            if (loopSpan.end && curFrame > loopSpan.end) {
+                if (curLoopIteration == loopRepeatCount) {
+                    return NULL;
+                }
+                curFrame = loopSpan.begin;
+                parser->setBookmark(loopStartFrameBookmark);
+                call = parser->parse_call();
+            }
+            if (curFrame == loopSpan.begin) {
+                if (curLoopIteration == 0) {
+                    parser->getBookmark(loopStartFrameBookmark);
+                }
+                ++curLoopIteration;
+            }
+        }
         if (call->flags & trace::CALL_FLAG_END_FRAME) {
-            parser->getBookmark(frameStart);
+            frameEnded = true;
         }
     } else {
-        if (loopCount) {
-            frameStart = lastFrameStart;
-            parser->setBookmark(frameStart);
-            call = parser->parse_call();
-            if (loopCount > 0) {
-                --loopCount;
+        if (loopRepeatCount == 0 || curLoopIteration < loopRepeatCount) {
+            if (curLoopIteration == loopRepeatCount) {
+                return NULL;
             }
+            curFrame = loopSpan.begin;
+            parser->setBookmark(loopStartFrameBookmark);
+            call = parser->parse_call();
         }
     }
 
@@ -103,9 +119,11 @@ LastFrameLoopParser::parse_call(void)
 
 
 AbstractParser *
-lastFrameLoopParser(AbstractParser *parser, int loopCount)
+loopParser(AbstractParser *parser,
+           const FrameSpan &loop_span,
+           unsigned long loop_repeat_count)
 {
-    return new LastFrameLoopParser(parser, loopCount);
+    return new LoopParser(parser, loop_span, loop_repeat_count);
 }
 
 

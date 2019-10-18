@@ -24,8 +24,8 @@
 ##########################################################################/
 
 
-from dxgi import *
-from d3d11sdklayers import *
+from .dxgi import *
+from .d3d11sdklayers import *
 
 
 HRESULT = MAKE_HRESULT([
@@ -1398,6 +1398,8 @@ D3D_FEATURE_LEVEL = Enum("D3D_FEATURE_LEVEL", [
     "D3D_FEATURE_LEVEL_10_1",
     "D3D_FEATURE_LEVEL_11_0",
     "D3D_FEATURE_LEVEL_11_1",
+    "D3D_FEATURE_LEVEL_12_0",
+    "D3D_FEATURE_LEVEL_12_1",
 ])
 
 D3D11_RASTERIZED_STREAM = FakeEnum(UINT, [
