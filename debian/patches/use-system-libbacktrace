@@ -4,12 +4,13 @@ Author: Christopher James Halse Rogers <raof@ubuntu.com>
 
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -530,8 +530,6 @@ endif ()
+@@ -530,9 +530,6 @@ endif ()
  add_subdirectory (thirdparty/crc32c)
- 
+
  if (CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
 -    add_subdirectory (thirdparty/libbacktrace)
 -    include_directories (${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/libbacktrace)
+-    include_directories (${CMAKE_CURRENT_BINARY_DIR}/thirdparty/libbacktrace)
      set (LIBBACKTRACE_LIBRARIES ${CMAKE_DL_LIBS} backtrace)
      add_definitions (-DHAVE_BACKTRACE=1)
  endif ()
