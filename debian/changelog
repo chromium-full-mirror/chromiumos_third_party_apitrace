@@ -1,3 +1,9 @@
+apitrace (8.0+cros-1) UNRELEASED; urgency=medium
+
+  * Non-maintainer upload.
+
+ -- David Riley <davidriley@google.com>  Fri, 18 Oct 2019 13:43:22 -0700
+
 apitrace (8.0+repack-2) unstable; urgency=medium
 
   * rules: fix built-using to have the source package version, not
