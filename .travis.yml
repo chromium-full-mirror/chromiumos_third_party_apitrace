@@ -16,20 +16,20 @@ matrix:
     dist: bionic
     env:
     - LABEL="ubuntu64"
-    - APT_PACKAGES="gcc g++ libdwarf-dev libprocps-dev qtbase5-dev qtdeclarative5-dev"
-    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DENABLE_GUI=1"
+    - APT_PACKAGES="gcc-5 g++-5 libdwarf-dev libprocps4-dev qtbase5-dev qtdeclarative5-dev"
+    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_C_COMPILER=gcc-5 -DCMAKE_CXX_COMPILER=g++-5 -DENABLE_GUI=1"
   - os: linux
     dist: bionic
     env:
     - LABEL="ubuntu32"
-    - APT_PACKAGES="linux-libc-dev gcc-multilib gcc-multilib g++-multilib"
-    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_SYSTEM_LIBRARY_PATH=/usr/lib32 -DENABLE_GUI=0"
+    - APT_PACKAGES="linux-libc-dev gcc-multilib gcc-5-multilib g++-5-multilib"
+    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_C_COMPILER=gcc-5 -DCMAKE_CXX_COMPILER=g++-5 -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_SYSTEM_LIBRARY_PATH=/usr/lib32 -DENABLE_GUI=0"
   - os: linux
     dist: bionic
     env:
     - LABEL="ubuntu64-clang"
-    - APT_PACKAGES="build-essential clang libc++-dev libc++abi-dev libdwarf-dev libprocps-dev qtbase5-dev qtdeclarative5-dev"
-    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++ -DENABLE_GUI=1"
+    - APT_PACKAGES="build-essential clang-4.0 libc++-dev libc++abi-dev libdwarf-dev libprocps4-dev qtbase5-dev qtdeclarative5-dev"
+    - CMAKE_OPTIONS="-DPython3_EXECUTABLE=/usr/bin/python3 -DCMAKE_C_COMPILER=clang-4.0 -DCMAKE_CXX_COMPILER=clang++-4.0 -DCMAKE_CXX_FLAGS=-stdlib=libc++ -DENABLE_GUI=1"
   - os: linux
     dist: bionic
     env:
