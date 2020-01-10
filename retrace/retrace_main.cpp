@@ -471,13 +471,13 @@ public:
         bool bTimeout = false;
         /* Consume successive calls for this thread. */
         do {
-
             assert(call);
             assert(call->thread_id == leg);
 
             bTimeout = isTimeout(os::getTime(), timeout, call);
             retraceCall(call);
-            delete call;
+            if (!call->reuse_call)
+                delete call;
             call = bTimeout ? NULL : parser->parse_call();
         } while (call && call->thread_id == leg);
 
@@ -654,7 +654,8 @@ mainLoop(long timeoutSeconds) {
         while (!bTimeout && (call = parser->parse_call())) {
             bTimeout = isTimeout(os::getTime(), timeoutTime, call);
             retraceCall(call);
-            delete call;
+            if (!call->reuse_call)
+                delete call;
         }
     } else {
         RelayRace race(timeoutTime);
