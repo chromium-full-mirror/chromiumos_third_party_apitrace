@@ -318,6 +318,29 @@ getOptionalHeader(HMODULE hModule,
                     szModule, pNtHeaders->Signature);
         return NULL;
     }
+
+    /*
+     * Handle gracefully DLL might have been loaded for resources,
+     * LOAD_LIBRARY_AS_DATAFILE.
+     */
+    const WORD Machine =
+#ifdef _WIN64
+        IMAGE_FILE_MACHINE_AMD64
+#else
+        IMAGE_FILE_MACHINE_I386
+#endif
+    ;
+    if (pNtHeaders->FileHeader.Machine != Machine) {
+        debugPrintf("inject: warning: %s: ignoring different machine (0x%02x)\n",
+                    szModule, pNtHeaders->FileHeader.Machine);
+        return nullptr;
+    }
+    if (pNtHeaders->FileHeader.SizeOfOptionalHeader < sizeof pNtHeaders->OptionalHeader) {
+        debugPrintf("inject: warning: %s: SizeOfOptionalHeader too small (%u)\n",
+                    szModule, pNtHeaders->FileHeader.SizeOfOptionalHeader);
+        return nullptr;
+    }
+
     PIMAGE_OPTIONAL_HEADER pOptionalHeader = &pNtHeaders->OptionalHeader;
     return pOptionalHeader;
 }
@@ -865,7 +888,11 @@ MyLoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
     }
 
     // Hook all new modules (and not just this one, to pick up any dependencies)
-    patchAllModules(ACTION_HOOK);
+    if ((dwFlags & (DONT_RESOLVE_DLL_REFERENCES |
+                    LOAD_LIBRARY_AS_DATAFILE |
+                    LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE)) == 0) {
+        patchAllModules(ACTION_HOOK);
+    }
 
     SetLastError(dwLastError);
     return hModule;
@@ -883,7 +910,11 @@ MyLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
     }
 
     // Hook all new modules (and not just this one, to pick up any dependencies)
-    patchAllModules(ACTION_HOOK);
+    if ((dwFlags & (DONT_RESOLVE_DLL_REFERENCES |
+                    LOAD_LIBRARY_AS_DATAFILE |
+                    LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE)) == 0) {
+        patchAllModules(ACTION_HOOK);
+    }
 
     SetLastError(dwLastError);
     return hModule;
@@ -1148,21 +1179,28 @@ DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
         /*
          * Hook kernel32.dll functions, and its respective Windows API Set.
          *
-         * http://msdn.microsoft.com/en-us/library/dn505783.aspx (Windows 8.1)
-         * http://msdn.microsoft.com/en-us/library/hh802935.aspx (Windows 8)
+         * https://msdn.microsoft.com/en-us/library/dn505783.aspx (Windows 8.1)
+         * https://msdn.microsoft.com/en-us/library/hh802935.aspx (Windows 8)
+         * https://docs.microsoft.com/en-us/uwp/win32-and-com/win32-apis
          */
 
         registerLibraryLoaderHooks("kernel32.dll");
         registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l1-1-0.dll");
         registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l1-1-1.dll");
         registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l1-2-0.dll");
+        registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l1-2-1.dll");
+        registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l1-2-2.dll");
+        registerLibraryLoaderHooks("api-ms-win-core-libraryloader-l2-1-0.dll");
         registerLibraryLoaderHooks("api-ms-win-core-kernel32-legacy-l1-1-0.dll");
         registerLibraryLoaderHooks("api-ms-win-core-kernel32-legacy-l1-1-1.dll");
+        registerLibraryLoaderHooks("api-ms-win-core-kernel32-legacy-l1-1-2.dll");
 
         registerProcessThreadsHooks("kernel32.dll");
         registerProcessThreadsHooks("api-ms-win-core-processthreads-l1-1-0.dll");
         registerProcessThreadsHooks("api-ms-win-core-processthreads-l1-1-1.dll");
         registerProcessThreadsHooks("api-ms-win-core-processthreads-l1-1-2.dll");
+        registerProcessThreadsHooks("api-ms-win-core-processthreads-l1-1-2.dll");
+        registerProcessThreadsHooks("api-ms-win-core-processthreads-l1-1-3.dll");
 
         szNewDllBaseName = getBaseName(szNewDllName);
         if (stricmp(szNewDllBaseName, "dxgitrace.dll") == 0) {

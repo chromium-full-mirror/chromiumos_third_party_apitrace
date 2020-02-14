@@ -24,6 +24,8 @@
  **************************************************************************/
 
 
+#include <stdlib.h>
+
 #include "glretrace_wgl.hpp"
 #include "glproc.hpp"
 

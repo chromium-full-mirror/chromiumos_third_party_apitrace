@@ -121,6 +121,9 @@ int64_t minCpuTime = 1000;
 unsigned frameNo = 0;
 unsigned callNo = 0;
 
+long long lastFrameTime = 0;
+long long perFrameDelayUsec = 0;
+long long minFrameDurationUsec = 0;
 
 static void
 takeSnapshot(unsigned call_no);
@@ -136,6 +139,29 @@ void
 frameComplete(trace::Call &call)
 {
     ++frameNo;
+    long long startTime = os::getTime();
+    long long delayUsec = perFrameDelayUsec;
+    if (lastFrameTime > 0) {
+        // Making sure that each frame takes at least minFrameDurationUsec,
+        // plus add a constant delay of perFrameDelayUsec.
+        long long actualFrameTime = startTime - lastFrameTime;
+        if (actualFrameTime < 0) {
+            actualFrameTime = 0;
+            std::cerr << "warning: os::getTime() returned a negative interval.\n";
+        }
+        long long actualFrameTimeUsec = actualFrameTime *
+            1000 * 1000 / os::timeFrequency;
+        if (actualFrameTimeUsec < minFrameDurationUsec) {
+            delayUsec += minFrameDurationUsec - actualFrameTimeUsec;
+        }
+    }
+
+    if (delayUsec > 0) {
+        os::sleep(delayUsec);
+    }
+
+    // TODO(tutankhamen): measure the actual sleep time and warn if it took
+    // much longer than expected.
 
     if (snapshotFrequency.contains(call)) {
         takeSnapshot(call.no);
@@ -143,6 +169,8 @@ frameComplete(trace::Call &call)
             exit(0);
         }
     }
+
+    lastFrameTime = os::getTime();
 }
 
 
@@ -443,13 +471,13 @@ public:
         bool bTimeout = false;
         /* Consume successive calls for this thread. */
         do {
-
             assert(call);
             assert(call->thread_id == leg);
 
             bTimeout = isTimeout(os::getTime(), timeout, call);
             retraceCall(call);
-            delete call;
+            if (!call->reuse_call)
+                delete call;
             call = bTimeout ? NULL : parser->parse_call();
         } while (call && call->thread_id == leg);
 
@@ -626,7 +654,8 @@ mainLoop(long timeoutSeconds) {
         while (!bTimeout && (call = parser->parse_call())) {
             bTimeout = isTimeout(os::getTime(), timeoutTime, call);
             retraceCall(call);
-            delete call;
+            if (!call->reuse_call)
+                delete call;
         }
     } else {
         RelayRace race(timeoutTime);
@@ -694,6 +723,8 @@ usage(const char *argv0) {
         "      --dump-format=FORMAT dump state format (`json` or `ubjson`)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
         "      --timeout=N         specify retrace timeout in seconds\n"
+        "      --per-frame-delay=MICROSECONDS   add extra delay after each frame (in addition to min-frame-duration)\n"
+        "      --min-frame-duration=MICROSECONDS    specify minimum frame duration\n"
         "      --loop-repeat-cnt=N loop N times replaying frames between specified in loop-begin and loop-end (0 for endless)\n"
         "      --loop-begin=F      specify the begin frame for a loop (0 for last frame)\n"
         "      --loop-end=F        specify the end frame for a loop (0 for last frame)\n"
@@ -724,6 +755,8 @@ enum {
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
     TIMEOUT_OPT,
+    PER_FRAME_DELAY_OPT,
+    MIN_FRAME_DURATION_OPT,
     LOOP_REPEAT_CNT_OPT,
     LOOP_BEGIN_OPT,
     LOOP_END_OPT,
@@ -777,6 +810,8 @@ longOptions[] = {
     {"verbose", no_argument, 0, 'v'},
     {"wait", no_argument, 0, 'w'},
     {"timeout", required_argument, 0, TIMEOUT_OPT},
+    {"per-frame-delay", required_argument, 0, PER_FRAME_DELAY_OPT},
+    {"min-frame-duration", required_argument, 0, MIN_FRAME_DURATION_OPT},
     {"loop-repeat-cnt", required_argument, 0, LOOP_REPEAT_CNT_OPT },
     {"loop-begin", required_argument, 0, LOOP_BEGIN_OPT},
     {"loop-end", required_argument, 0, LOOP_END_OPT},
@@ -1155,6 +1190,12 @@ int main(int argc, char **argv)
             break;
         case TIMEOUT_OPT:
             timeoutSeconds = trace::intOption(optarg, -1);
+            break;
+        case PER_FRAME_DELAY_OPT:
+            perFrameDelayUsec = trace::intOption(optarg, 0);
+            break;
+        case MIN_FRAME_DURATION_OPT:
+            minFrameDurationUsec = trace::intOption(optarg, 0);
             break;
         case LOOP_REPEAT_CNT_OPT:
             loopRepeatCount = trace::intOption(optarg, 0);
