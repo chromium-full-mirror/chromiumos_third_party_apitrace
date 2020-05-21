@@ -30,6 +30,9 @@
 #include <limits.h> // for CHAR_MAX
 #include <memory> // for unique_ptr
 #include <iostream>
+#include <string>
+#include <vector> // for per frame results
+#include <fstream>
 #include <regex>
 #include <getopt.h>
 #ifndef _WIN32
@@ -89,6 +92,18 @@ bool snapshotAlpha = false;
 bool forceWindowed = true;
 bool dumpingState = false;
 bool dumpingSnapshots = false;
+bool dumpPerFrameStats = false;
+
+// Per frame stats
+std::string perFrameStatsFile;
+struct FrameStat {
+  FrameStat(long frame_, long long endTime_)
+  : frame(frame_), endTime(endTime_) {}
+  long frame;
+  long long endTime;
+};
+std::vector<FrameStat> frameCompleteTimestamps;
+// end of Per frame stats
 
 bool ignoreCalls = false;
 trace::CallSet callsToIgnore;
@@ -177,6 +192,10 @@ frameComplete(trace::Call &call)
     if (bNeedFrameDelay) {
         lastFrameTime = os::getTime();
     }
+    // TODO(tutankhamen): frameNo isn't actual frame id, but sequential number of
+    // a compleeted frame. It must be fixed for lopp replays
+    if (dumpPerFrameStats)
+        frameCompleteTimestamps.push_back(FrameStat(frameNo, lastFrameTime));
 }
 
 
@@ -682,6 +701,34 @@ mainLoop(long timeoutSeconds) {
     long long endTime = os::getTime();
     float timeInterval = (endTime - startTime) * (1.0 / os::timeFrequency);
 
+    std::stringstream frames_ss;
+    if (dumpPerFrameStats) {
+        std::ofstream out_file(perFrameStatsFile, std::ios::out | std::ios::trunc);
+        if (out_file.is_open()) {
+            long long dur_usec = 0;
+            long long stime = startTime;
+            size_t fcount = frameCompleteTimestamps.size();
+            for (size_t i=0; i<fcount; ++i) {
+                const FrameStat& fstat = frameCompleteTimestamps[i];
+                long long fdur = (fstat.endTime-stime) * 1000 * 1000 / os::timeFrequency;
+                dur_usec += fdur;
+                if (i) frames_ss << ",";
+                frames_ss << "[" << fstat.frame << "," << fdur << "]";
+                stime = fstat.endTime;
+            }
+            double dur_sec = dur_usec / 1000000.0;
+            out_file <<
+              "{\"frames_count\":" << fcount << "," <<
+              "\"total_duration\":" << dur_sec << "," <<
+              "\"average_fps\":" << (fcount/dur_sec) << "," <<
+              "\"frames\":[" << frames_ss.str() << "]}" << std::endl;
+            out_file.close();
+        } else {
+            std::cerr << "unable to create file " << perFrameStatsFile <<
+                " to dump per frame retrace statistics." << std::endl;
+        }
+    }
+
     if ((retrace::verbosity >= -1) || (retrace::profiling)) {
         std::cout <<
             "Rendered " << frameNo << " frames"
@@ -744,6 +791,7 @@ usage(const char *argv0) {
         "      --min-frame-duration=MICROSECONDS   specify minimum frame rendering duration\n"
         "      --per-frame-delay=MICROSECONDS   add extra delay after each frame (in addition to min-frame-duration)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
+        "      --dump-per-frame-stats=out_file   dumps per frame retrace statistics in JSON format to the out_file\n"
         "      --timeout=N         specify retrace timeout in seconds\n"
         "      --loop-repeat-cnt=N loop N times replaying frames between specified in loop-begin and loop-end (0 for endless)\n"
         "      --loop-begin=F      specify the begin frame for a loop (0 for last frame)\n"
@@ -776,6 +824,7 @@ enum {
     GENPASS_OPT,
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
+    DUMP_PER_FRAME_STATS_OPT,
     MIN_FRAME_DURATION_OPT,
     PER_FRAME_DELAY_OPT,
     TIMEOUT_OPT,
@@ -839,12 +888,15 @@ longOptions[] = {
     {"snapshot-threaded", no_argument, 0, 't'},
     {"verbose", no_argument, 0, 'v'},
     {"wait", no_argument, 0, 'w'},
+    // begin of chromeos fork specific features
+    {"dump-per-frame-stats", required_argument, 0, DUMP_PER_FRAME_STATS_OPT},
     {"min-frame-duration", required_argument, 0, MIN_FRAME_DURATION_OPT},
     {"per-frame-delay", required_argument, 0, PER_FRAME_DELAY_OPT},
     {"timeout", required_argument, 0, TIMEOUT_OPT},
     {"loop-repeat-cnt", required_argument, 0, LOOP_REPEAT_CNT_OPT },
     {"loop-begin", required_argument, 0, LOOP_BEGIN_OPT},
     {"loop-end", required_argument, 0, LOOP_END_OPT},
+    // end of chromeos fork specific features
     {"singlethread", no_argument, 0, SINGLETHREAD_OPT},
     {"ignore-retvals", no_argument, 0, IGNORE_RETVALS_OPT},
     {"no-context-check", no_argument, 0, NO_CONTEXT_CHECK},
@@ -1227,6 +1279,19 @@ int main(int argc, char **argv)
             break;
         case MIN_FRAME_DURATION_OPT:
             minFrameDurationUsec = trace::intOption(optarg, 0);
+        case DUMP_PER_FRAME_STATS_OPT:
+            {
+                perFrameStatsFile = optarg;
+                // Early test to verify the perFrameStatsFile is writable
+                std::ofstream out_file(perFrameStatsFile, std::ios::out | std::ios::trunc);
+                if (!out_file.is_open()) {
+                    std::cerr << "unable to create file " << perFrameStatsFile <<
+                        " to dump per frame retrace results." << std::endl;
+                    return 1;
+                }
+                out_file.close();
+                dumpPerFrameStats = true;
+            }
             break;
         case PER_FRAME_DELAY_OPT:
             perFrameDelayUsec = trace::intOption(optarg, 0);
