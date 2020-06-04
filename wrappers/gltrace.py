@@ -149,6 +149,7 @@ class GlTracer(Tracer):
         print('#include "gltrace.hpp"')
         print('#include "gltrace_arrays.hpp"')
         print('#include "glmemshadow.hpp"')
+        print('#include "gltrace_unpack_compressed.hpp"')
         print()
 
         # Whether we need user arrays
@@ -923,17 +924,20 @@ class GlTracer(Tracer):
         # GPU are done and buffers are updated.
         if function.name == 'glWaitSync':
             print(r'    gltrace::Context *_ctx = gltrace::getContext();')
+            print(r'    GLMemoryShadow::commitAllWrites(_ctx, trace::fakeMemcpy);')
             print(r'    GLMemoryShadow::syncAllForReads(_ctx);')
 
         if function.name == 'glClientWaitSync':
             print(r'    if (_result == GL_ALREADY_SIGNALED || _result == GL_CONDITION_SATISFIED) {')
             print(r'        gltrace::Context *_ctx = gltrace::getContext();')
+            print(r'        GLMemoryShadow::commitAllWrites(_ctx, trace::fakeMemcpy);')
             print(r'        GLMemoryShadow::syncAllForReads(_ctx);')
             print(r'    }')
 
         if function.name == 'glGetSynciv':
             print(r'    if (pname == GL_SYNC_STATUS && bufSize > 0 && values[0] == GL_SIGNALED) {')
             print(r'        gltrace::Context *_ctx = gltrace::getContext();')
+            print(r'        GLMemoryShadow::commitAllWrites(_ctx, trace::fakeMemcpy);')
             print(r'        GLMemoryShadow::syncAllForReads(_ctx);')
             print(r'    }')
 
@@ -975,6 +979,8 @@ class GlTracer(Tracer):
         r'(Compressed)?(Multi)?Tex(ture)?(Sub)?Image[1-4]D',
     ]) + r')[0-9A-Z]*$')
 
+    compressed_image_function_regex = re.compile(r'^glCompressedTex(ture)?(Sub)?Image[1-4]D[0-9A-Z]*$')
+
     def serializeArgValue(self, function, arg):
         # Recognize offsets instead of blobs when a PBO is bound
         if self.unpack_function_regex.match(function.name) \
@@ -989,7 +995,10 @@ class GlTracer(Tracer):
             print('        if (_unpack_buffer) {')
             print('            trace::localWriter.writePointer((uintptr_t)%s);' % arg.name)
             print('        } else {')
-            Tracer.serializeArgValue(self, function, arg)
+            if self.compressed_image_function_regex.match(function.name):
+                print('            %s;' % arg.type.size.format('[](const void* data, GLsizei size){ trace::localWriter.writeBlob(data, size); }'))
+            else:
+                Tracer.serializeArgValue(self, function, arg)
             print('        }')
             print('    }')
             return

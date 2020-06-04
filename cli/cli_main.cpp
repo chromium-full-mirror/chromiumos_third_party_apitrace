@@ -78,7 +78,6 @@ static const Command * commands[] = {
     &retrace_command,
     &trace_command,
     &trim_command,
-    &trim_auto_command,
     &help_command,
     &info_command
 };

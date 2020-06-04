@@ -50,6 +50,7 @@ MainWindow::MainWindow()
       m_nonDefaultsLookupEvent(0)
 {
     m_ui.setupUi(this);
+    initWindowState();
     updateActionsState(false);
     initObjects();
     initConnections();
@@ -654,18 +655,23 @@ static void addSurfaceItem(const ApiSurface &surface,
 
     int width = surface.size().width();
     int height = surface.size().height();
+    int depth = surface.depth();
     QString descr =
-        QString::fromLatin1("%1, %2, %3 x %4")
+        QString::fromUtf8(u8"%1, %2, %3 \u00d7 %4")
         .arg(label)
         .arg(surface.formatName())
         .arg(width)
         .arg(height);
+    if (depth > 1) {
+        descr += QString::fromUtf8(u8" \u00d7 %1").arg(depth);
+    }
 
     QString toolTip;
     toolTip += QString::fromLatin1("label = %1\n").arg(label);
     toolTip += QString::fromLatin1("format = %1\n").arg(surface.formatName());
     toolTip += QString::fromLatin1("width = %1\n").arg(width);
     toolTip += QString::fromLatin1("height = %1\n").arg(height);
+    toolTip += QString::fromLatin1("depth = %1\n").arg(depth);
     item->setToolTip(0, toolTip);
     item->setToolTip(1, toolTip);
 
@@ -845,11 +851,7 @@ void MainWindow::fillStateForFrame()
     m_ui.stateTreeWidget->insertTopLevelItems(0, items);
 
     QMap<QString, QString> shaderSources = state.shaderSources();
-    if (shaderSources.isEmpty()) {
-        m_sourcesWidget->setShaders(shaderSources);
-    } else {
-        m_sourcesWidget->setShaders(shaderSources);
-    }
+    m_sourcesWidget->setShaders(shaderSources);
 
     m_ui.uniformsTreeWidget->clear();
     QList<QTreeWidgetItem *> uniformsItems;
@@ -965,6 +967,20 @@ void MainWindow::showSelectedSurface()
     viewer->show();
     viewer->raise();
     viewer->activateWindow();
+}
+
+void MainWindow::initWindowState()
+{
+    QSettings settings;
+    restoreGeometry(settings.value("mainWindowGeometry").toByteArray());
+    restoreState(settings.value("mainWindowState").toByteArray());
+}
+
+void MainWindow::saveWindowState()
+{
+    QSettings settings;
+    settings.setValue("mainWindowGeometry", saveGeometry());
+    settings.setValue("mainWindowState", saveState());
 }
 
 void MainWindow::initObjects()
@@ -1232,6 +1248,7 @@ void MainWindow::updateActionsState(bool traceLoaded, bool stopped)
 void MainWindow::closeEvent(QCloseEvent * event)
 {
     m_profileDialog->close();
+    saveWindowState();
     QMainWindow::closeEvent(event);
 }
 
@@ -1647,7 +1664,8 @@ void MainWindow::slotSearchResult(const ApiTrace::SearchRequest &request,
                 m_trace->findNext(call->parentFrame(), call,
                                   request.text, request.cs, request.useRegex);
             } else {
-                m_trace->findNext(call->parentFrame(), call,
+                assert(request.direction == ApiTrace::SearchRequest::Prev);
+                m_trace->findPrev(call->parentFrame(), call,
                                   request.text, request.cs, request.useRegex);
             }
         }

@@ -30,6 +30,9 @@
 #include <limits.h> // for CHAR_MAX
 #include <memory> // for unique_ptr
 #include <iostream>
+#include <string>
+#include <vector> // for per frame results
+#include <fstream>
 #include <regex>
 #include <getopt.h>
 #ifndef _WIN32
@@ -89,6 +92,18 @@ bool snapshotAlpha = false;
 bool forceWindowed = true;
 bool dumpingState = false;
 bool dumpingSnapshots = false;
+bool dumpPerFrameStats = false;
+
+// Per frame stats
+std::string perFrameStatsFile;
+struct FrameStat {
+  FrameStat(long frame_, long long endTime_)
+  : frame(frame_), endTime(endTime_) {}
+  long frame;
+  long long endTime;
+};
+std::vector<FrameStat> frameCompleteTimestamps;
+// end of Per frame stats
 
 bool resolveMSAA = true;
 
@@ -171,6 +186,10 @@ frameComplete(trace::Call &call)
     }
 
     lastFrameTime = os::getTime();
+    // TODO(tutankhamen): frameNo isn't actual frame id, but sequential number of
+    // a compleeted frame. It must be fixed for lopp replays
+    if (dumpPerFrameStats)
+        frameCompleteTimestamps.push_back(FrameStat(frameNo, lastFrameTime));
 }
 
 
@@ -328,12 +347,17 @@ retraceCall(trace::Call *call) {
         }
     }
 
-    if (call->no >= dumpStateCallNo &&
-        dumper->canDump()) {
-        StateWriter *writer = stateWriterFactory(std::cout);
-        dumper->dumpState(*writer);
-        delete writer;
-        exit(0);
+    // dumpStateCallNo is 0 when fetching default state
+    if (call->no == dumpStateCallNo || dumpStateCallNo == 0) {
+        if (dumper->canDump()) {
+            StateWriter *writer = stateWriterFactory(std::cout);
+            dumper->dumpState(*writer);
+            delete writer;
+            exit(0);
+        } else if (dumpStateCallNo != 0) {
+            std::cerr << call->no << ": error: failed to dump state\n";
+            exit(1);
+        }
     }
 }
 
@@ -666,6 +690,34 @@ mainLoop(long timeoutSeconds) {
     long long endTime = os::getTime();
     float timeInterval = (endTime - startTime) * (1.0 / os::timeFrequency);
 
+    std::stringstream frames_ss;
+    if (dumpPerFrameStats) {
+        std::ofstream out_file(perFrameStatsFile, std::ios::out | std::ios::trunc);
+        if (out_file.is_open()) {
+            long long dur_usec = 0;
+            long long stime = startTime;
+            size_t fcount = frameCompleteTimestamps.size();
+            for (size_t i=0; i<fcount; ++i) {
+                const FrameStat& fstat = frameCompleteTimestamps[i];
+                long long fdur = (fstat.endTime-stime) * 1000 * 1000 / os::timeFrequency;
+                dur_usec += fdur;
+                if (i) frames_ss << ",";
+                frames_ss << "[" << fstat.frame << "," << fdur << "]";
+                stime = fstat.endTime;
+            }
+            double dur_sec = dur_usec / 1000000.0;
+            out_file <<
+              "{\"frames_count\":" << fcount << "," <<
+              "\"total_duration\":" << dur_sec << "," <<
+              "\"average_fps\":" << (fcount/dur_sec) << "," <<
+              "\"frames\":[" << frames_ss.str() << "]}" << std::endl;
+            out_file.close();
+        } else {
+            std::cerr << "unable to create file " << perFrameStatsFile <<
+                " to dump per frame retrace statistics." << std::endl;
+        }
+    }
+
     if ((retrace::verbosity >= -1) || (retrace::profiling)) {
         std::cout <<
             "Rendered " << frameNo << " frames"
@@ -722,6 +774,7 @@ usage(const char *argv0) {
         "  -D, --dump-state=CALL   dump state at specific call no\n"
         "      --dump-format=FORMAT dump state format (`json` or `ubjson`)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
+        "      --dump-per-frame-stats=out_file   dumps per frame retrace statistics in JSON format to the out_file\n"
         "      --timeout=N         specify retrace timeout in seconds\n"
         "      --per-frame-delay=MICROSECONDS   add extra delay after each frame (in addition to min-frame-duration)\n"
         "      --min-frame-duration=MICROSECONDS    specify minimum frame duration\n"
@@ -754,6 +807,7 @@ enum {
     GENPASS_OPT,
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
+    DUMP_PER_FRAME_STATS_OPT,
     TIMEOUT_OPT,
     PER_FRAME_DELAY_OPT,
     MIN_FRAME_DURATION_OPT,
@@ -809,12 +863,15 @@ longOptions[] = {
     {"snapshot-threaded", no_argument, 0, 't'},
     {"verbose", no_argument, 0, 'v'},
     {"wait", no_argument, 0, 'w'},
+    // begin of chromeos fork specific features
+    {"dump-per-frame-stats", required_argument, 0, DUMP_PER_FRAME_STATS_OPT},
     {"timeout", required_argument, 0, TIMEOUT_OPT},
     {"per-frame-delay", required_argument, 0, PER_FRAME_DELAY_OPT},
     {"min-frame-duration", required_argument, 0, MIN_FRAME_DURATION_OPT},
     {"loop-repeat-cnt", required_argument, 0, LOOP_REPEAT_CNT_OPT },
     {"loop-begin", required_argument, 0, LOOP_BEGIN_OPT},
     {"loop-end", required_argument, 0, LOOP_END_OPT},
+    // end of chromeos fork specific features
     {"singlethread", no_argument, 0, SINGLETHREAD_OPT},
     {"ignore-retvals", no_argument, 0, IGNORE_RETVALS_OPT},
     {"no-context-check", no_argument, 0, NO_CONTEXT_CHECK},
@@ -998,22 +1055,6 @@ VectoredHandler(PEXCEPTION_POINTERS pExceptionInfo)
 #endif  // _WIN32
 
 
-/*
- * Direct NVIDIA Optimus driver to use the High Performance Graphics.
- *
- * If we invoked glGetString(GL_VENDOR) or glGetString(GL_RENDERER) this
- * wouldn't be necessary, but glretrace skips such calls.
- *
- * See also:
- * - http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
- */
-#ifdef _WIN32
-extern "C" {
-     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000000;
-}
-#endif
-
-
 extern "C"
 int main(int argc, char **argv)
 {
@@ -1091,9 +1132,6 @@ int main(int argc, char **argv)
                 driver = DRIVER_HARDWARE;
             } else if (strcasecmp(optarg, "dgpu") == 0) {
                 driver = DRIVER_DISCRETE;
-#ifdef _WIN32
-                NvOptimusEnablement = 0x00000001;
-#endif
             } else if (strcasecmp(optarg, "igpu") == 0) {
                 driver = DRIVER_INTEGRATED;
             } else if (strcasecmp(optarg, "sw") == 0) {
@@ -1187,6 +1225,20 @@ int main(int argc, char **argv)
             break;
         case 'w':
             waitOnFinish = true;
+            break;
+        case DUMP_PER_FRAME_STATS_OPT:
+            {
+                perFrameStatsFile = optarg;
+                // Early test to verify the perFrameStatsFile is writable
+                std::ofstream out_file(perFrameStatsFile, std::ios::out | std::ios::trunc);
+                if (!out_file.is_open()) {
+                    std::cerr << "unable to create file " << perFrameStatsFile <<
+                        " to dump per frame retrace results." << std::endl;
+                    return 1;
+                }
+                out_file.close();
+                dumpPerFrameStats = true;
+            }
             break;
         case TIMEOUT_OPT:
             timeoutSeconds = trace::intOption(optarg, -1);

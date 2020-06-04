@@ -158,7 +158,7 @@ if (WIN32)
         endif ()
 
         # https://developer.microsoft.com/en-us/windows/projects/campaigns/windows-dev-essentials-how-windows-10-sdks-ship
-        set (REQUIRED_WINDOWS_SDK 10.0.14393.0)
+        set (REQUIRED_WINDOWS_SDK 10.0.18362)
         if (NOT DirectX_D3D11_4_INCLUDE_FOUND)
             if (CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
                 message (SEND_ERROR
@@ -639,14 +639,15 @@ install (
     RENAME LICENSE.txt
 )
 
-set (CPACK_PACKAGE_VERSION_MAJOR "9")
-set (CPACK_PACKAGE_VERSION_MINOR "0")
-
-# Use current date in YYYYMMDD format as patch number 
-execute_process (
-    COMMAND ${Python3_EXECUTABLE} -c "import time, sys; sys.stdout.write(time.strftime('%Y%m%d'))"
-    OUTPUT_VARIABLE CPACK_PACKAGE_VERSION_PATCH
-)
+set (CPACK_PACKAGE_VERSION "latest")
+# https://www.appveyor.com/docs/environment-variables/
+if (($ENV{APPVEYOR}) AND ($ENV{APPVEYOR_REPO_TAG}))
+    set (CPACK_PACKAGE_VERSION "$ENV{APPVEYOR_REPO_TAG_NAME}")
+endif ()
+# https://docs.travis-ci.com/user/environment-variables/#default-environment-variables
+if (($ENV{TRAVIS}) AND NOT "$ENV{TRAVIS_TAG}" STREQUAL "")
+    set (CPACK_PACKAGE_VERSION "$ENV{TRAVIS_TAG}")
+endif ()
 
 # cpack mistakenly detects Mingw-w64 as win32
 if (MINGW)

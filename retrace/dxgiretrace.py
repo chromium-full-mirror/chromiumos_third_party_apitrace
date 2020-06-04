@@ -81,7 +81,7 @@ class D3DRetracer(Retracer):
                 print(r'    }')
 
                 # Force driver
-                self.forceDriver('D3D10_DRIVER_TYPE')
+                self.forceDriver('D3D10_DRIVER_TYPE_HARDWARE')
 
             if function.name.startswith('D3D11CreateDevice'):
                 # Toggle debugging
@@ -95,11 +95,11 @@ class D3DRetracer(Retracer):
                 print(r'    }')
 
                 # Force driver
-                self.forceDriver('D3D_DRIVER_TYPE')
+                self.forceDriver('D3D_DRIVER_TYPE_UNKNOWN')
 
         Retracer.invokeFunction(self, function)
 
-        if function.name.startswith('D3D11CreateDevice'):
+        if function.name in self.createDeviceFunctionNames:
             print(r'''
     if (retrace::driver != retrace::DRIVER_DEFAULT &&
         ppDevice && *ppDevice) {
@@ -154,86 +154,54 @@ class D3DRetracer(Retracer):
 
         Retracer.handleFailure(self, interface, methodOrFunction)
 
-    def forceDriver(self, enum):
+    def forceDriver(self, driverType):
         # This can only work when pAdapter is NULL. For non-NULL pAdapter we
         # need to override inside the EnumAdapters call below
-        print(r'    if (pAdapter == NULL) {')
-        print(r'        switch (retrace::driver) {')
-        print(r'        case retrace::DRIVER_INTEGRATED:')
-        print(r'            retrace::warning(call) << "integrated gpu selection not yet implemented\n";')
-        print(r'        case retrace::DRIVER_DISCRETE:')
-        print(r'        case retrace::DRIVER_HARDWARE:')
-        print(r'            DriverType = %s_HARDWARE;' % enum)
-        print(r'            Software = NULL;')
-        print(r'            break;')
-        print(r'        case retrace::DRIVER_SOFTWARE:')
-        print(r'            DriverType = %s_WARP;' % enum)
-        print(r'            Software = NULL;')
-        print(r'            break;')
-        print(r'        case retrace::DRIVER_REFERENCE:')
-        print(r'            DriverType = %s_REFERENCE;' % enum)
-        print(r'            Software = NULL;')
-        print(r'            break;')
-        print(r'        case retrace::DRIVER_NULL:')
-        print(r'            DriverType = %s_NULL;' % enum)
-        print(r'            Software = NULL;')
-        print(r'            break;')
-        print(r'        case retrace::DRIVER_MODULE:')
-        print(r'            DriverType = %s_SOFTWARE;' % enum)
-        print(r'            Software = LoadLibraryA(retrace::driverModule);')
-        print(r'            if (!Software) {')
-        print(r'                retrace::warning(call) << "failed to load " << retrace::driverModule << "\n";')
-        print(r'            }')
-        print(r'            break;')
-        print(r'        default:')
-        print(r'            assert(0);')
-        print(r'            /* fall-through */')
-        print(r'        case retrace::DRIVER_DEFAULT:')
-        print(r'            if (DriverType == %s_SOFTWARE) {' % enum)
-        print(r'                Software = LoadLibraryA("d3d10warp");')
-        print(r'                if (!Software) {')
-        print(r'                    retrace::warning(call) << "failed to load d3d10warp.dll\n";')
-        print(r'                }')
-        print(r'            }')
-        print(r'            break;')
-        print(r'        }')
-        print(r'    } else {')
+        print(r'    com_ptr<IDXGIFactory1> _pFactory;')
+        print(r'    com_ptr<IDXGIAdapter> _pAdapter;')
+        print(r'    if (pAdapter == nullptr && retrace::driver != retrace::DRIVER_DEFAULT) {')
+        print(r'        _result = CreateDXGIFactory1(IID_IDXGIFactory1, (void **)&_pFactory);')
+        print(r'        assert(SUCCEEDED(_result));')
+        print(r'        _result = d3dretrace::createAdapter(_pFactory, IID_IDXGIAdapter1, (void **)&_pAdapter);')
+        print(r'        pAdapter = _pAdapter;')
+        print(r'        DriverType = %s;' % driverType)
         print(r'        Software = NULL;')
         print(r'    }')
 
     def doInvokeInterfaceMethod(self, interface, method):
+        if interface.name.startswith('IDXGIAdapter') and method.name == 'EnumOutputs':
+            print(r'    if (Output != 0) {')
+            print(r'        retrace::warning(call) << "ignoring output " << Output << "\n";')
+            print(r'        Output = 0;')
+            print(r'    }')
+
+        # GPU counters are vendor specific and likely to fail, so use a
+        # timestamp query instead, which is guaranteed to succeed
+        if method.name == 'CreateCounter':
+            if interface.name.startswith('ID3D10'):
+                print(r'    D3D10_QUERY_DESC _queryDesc;')
+                print(r'    _queryDesc.Query = D3D10_QUERY_TIMESTAMP;')
+                print(r'    _queryDesc.MiscFlags = 0;')
+                print(r'    _result = _this->CreateQuery(&_queryDesc, reinterpret_cast<ID3D10Query **>(ppCounter));')
+                return
+            if interface.name.startswith('ID3D11'):
+                print(r'    D3D11_QUERY_DESC _queryDesc;')
+                print(r'    _queryDesc.Query = D3D11_QUERY_TIMESTAMP;')
+                print(r'    _queryDesc.MiscFlags = 0;')
+                print(r'    _result = _this->CreateQuery(&_queryDesc, reinterpret_cast<ID3D11Query **>(ppCounter));')
+                return
+
         Retracer.doInvokeInterfaceMethod(self, interface, method)
 
         # Force driver
         if interface.name.startswith('IDXGIFactory') and method.name.startswith('EnumAdapters'):
-            print(r'    const char *szSoftware = NULL;')
-            print(r'    switch (retrace::driver) {')
-            print(r'    case retrace::DRIVER_REFERENCE:')
-            print(r'        szSoftware = "d3d11ref.dll";')
-            print(r'        break;')
-            print(r'    case retrace::DRIVER_SOFTWARE:')
-            print(r'        szSoftware = "d3d10warp.dll";')
-            print(r'        break;')
-            print(r'    case retrace::DRIVER_MODULE:')
-            print(r'        szSoftware = retrace::driverModule;')
-            print(r'        break;')
-            print(r'    default:')
-            print(r'        break;')
+            print(r'    if (Adapter != 0) {')
+            print(r'        retrace::warning(call) << "ignoring non-default adapter " << Adapter << "\n";')
+            print(r'        Adapter = 0;')
             print(r'    }')
-            print(r'    HMODULE hSoftware = NULL;')
-            print(r'    if (szSoftware) {')
-            print(r'        hSoftware = LoadLibraryA(szSoftware);')
-            print(r'        if (!hSoftware) {')
-            print(r'            retrace::warning(call) << "failed to load " << szSoftware << "\n";')
-            print(r'        }')
-            print(r'    }')
-            print(r'    if (hSoftware) {')
-            print(r'        _result = _this->CreateSoftwareAdapter(hSoftware, reinterpret_cast<IDXGIAdapter **>(ppAdapter));')
+            print(r'    if (retrace::driver != retrace::DRIVER_DEFAULT) {')
+            print(r'        _result = d3dretrace::createAdapter(_this, IID_IDXGIAdapter1, (void **)ppAdapter);')
             print(r'    } else {')
-            print(r'        if (Adapter != 0) {')
-            print(r'            retrace::warning(call) << "ignoring non-default adapter " << Adapter << "\n";')
-            print(r'            Adapter = 0;')
-            print(r'        }')
             Retracer.doInvokeInterfaceMethod(self, interface, method)
             print(r'    }')
             return

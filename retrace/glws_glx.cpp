@@ -141,6 +141,14 @@ public:
         Drawable::show();
     }
 
+    void setName(const char *name) override {
+        if (!window) {
+            return;
+        }
+
+        setWindowName(window, name);
+    }
+
     void copySubBuffer(int x, int y, int width, int height) override {
         glXCopySubBufferMESA(display, drawable, x, y, width, height);
 
@@ -150,7 +158,6 @@ public:
     }
 
     void swapBuffers(void) override {
-        assert(!pbuffer);
         if (window &&
             !has_GLX_EXT_swap_control &&
             has_GLX_MESA_swap_control) {
