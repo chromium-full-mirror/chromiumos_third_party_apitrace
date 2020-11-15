@@ -36,7 +36,6 @@
 #include <memory>
 #include <fstream>
 #include <string>
-#include <regex>
 
 #include "cxx_compat.hpp" // for std::to_string, std::make_unique
 
@@ -44,11 +43,9 @@
 #include "cli_pager.hpp"
 
 #include "trace_parser.hpp"
-#include "trace_dump_internal.hpp"
-#include "trace_callset.hpp"
 #include "trace_option.hpp"
 
-static const char *synopsis = "Print given trace file(s) information in JSON format";
+static const char *synopsis = "Print given trace file(s) information.";
 
 static void
 usage(void)
