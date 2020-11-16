@@ -1,3 +1,8 @@
+apitrace (8.0+cros-4) unstable; urgency=medium
+  * Sync changes from upstream
+
+ -- Robert Tarasov <tutankhamen@chromium.org> Mon, 16 Nov 2020 10:17:20 -0800
+
 apitrace (8.0+cros-3) unstable; urgency=medium
   * Merge from cros/master.
 

@@ -90,12 +90,16 @@ _assert(const char *_Message, const char *_File, unsigned _Line)
 }
 
 
+#ifndef __MINGW32__
+
 EXTERN_C void
 _wassert(const wchar_t * _Message, const wchar_t *_File, unsigned _Line)
 {
     debugPrintf("Assertion failed: %S, file %S, line %u\n", _Message, _File, _Line);
     TerminateProcess(GetCurrentProcess(), 1);
 }
+
+#endif /* !__MINGW32__ */
 
 
 static HMODULE WINAPI
@@ -996,9 +1000,9 @@ MyLoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
 static void
 logGetProcAddress(HMODULE hModule, LPCSTR lpProcName) {
     if (HIWORD(lpProcName) == 0) {
-        debugPrintf("inject: intercepting %s(%u)\n", "GetProcAddress", LOWORD(lpProcName));
+        debugPrintf("inject: intercepting %s(0x%p, %u)\n", "GetProcAddress", hModule, LOWORD(lpProcName));
     } else {
-        debugPrintf("inject: intercepting %s(\"%s\")\n", "GetProcAddress", lpProcName);
+        debugPrintf("inject: intercepting %s(0x%p, \"%s\")\n", "GetProcAddress", hModule, lpProcName);
     }
 }
 
