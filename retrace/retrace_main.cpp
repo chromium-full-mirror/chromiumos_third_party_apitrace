@@ -27,6 +27,7 @@
 
 
 #include <string.h>
+#include <atomic>
 #include <limits.h> // for CHAR_MAX
 #include <memory> // for unique_ptr
 #include <iostream>
@@ -35,6 +36,7 @@
 #include <fstream>
 #include <regex>
 #include <getopt.h>
+#include <time.h>
 #ifndef _WIN32
 #include <unistd.h> // for isatty()
 #endif
@@ -93,6 +95,7 @@ bool forceWindowed = true;
 bool dumpingState = false;
 bool dumpingSnapshots = false;
 bool dumpPerFrameStats = false;
+bool watchdogEnabled = false;
 
 // Per frame stats
 std::string perFrameStatsFile;
@@ -143,6 +146,83 @@ long long minFrameDurationUsec = 0;
 static void
 takeSnapshot(unsigned call_no);
 
+/**
+ * Retrace watchdog.
+ *
+ * Retrace watchdog triggers abort() if retrace of a single api call
+ * will take more than {TimeoutInSec} seconds.
+ */
+class RetraceWatchdog
+{
+public:
+    enum {
+        TimeoutInSec = 30,
+        RunnerSleepInMills = 1000,
+    };
+
+    static uint32_t get_time_u32() {
+        return static_cast<uint32_t>(time(NULL));
+    }
+
+    static uint32_t get_duration_u32(uint32_t from, uint32_t to) {
+        if (to <= from) return 0;
+        return to - from;
+    }
+
+private:
+    typedef std::chrono::time_point<std::chrono::system_clock> TimePoint;
+
+    RetraceWatchdog()
+    : last_call_mark(get_time_u32()), want_exit(false) {
+        thread = os::thread(runnerThread, this);
+    }
+
+    std::thread thread;
+    std::atomic<uint64_t> last_call_mark;
+    std::atomic<bool> want_exit;
+
+    static void runnerThread(RetraceWatchdog* rw) {
+        while(!rw->want_exit) {
+            // Once a second check if progress has been made.
+            uint64_t mark = rw->last_call_mark;
+            uint32_t dur = get_duration_u32(
+                    static_cast<uint32_t>(mark&0xFFFFFFFF),
+                    get_time_u32()
+                );
+
+            if (dur >= static_cast<uint32_t>(TimeoutInSec)) {
+                fprintf(
+                    stderr,
+                    "Exception: Retrace watchdog timeout has occured at call %u!\n",
+                    static_cast<uint32_t>(mark >> 32));
+                abort();
+            }
+            os::sleep(RunnerSleepInMills * 1000);
+        }
+    }
+
+public:
+    ~RetraceWatchdog() {
+        want_exit = true;
+        if (thread.joinable()) {
+           thread.join();
+        }
+    }
+    // Assuming we use C++ 11 or newer therefore the following singleton
+    // implementation is thread safe
+    static RetraceWatchdog& Instance() {
+        static RetraceWatchdog inst;
+        return inst;
+    }
+
+	  void CallProcessed(uint32_t call_no) {
+      // Record time and monotonic number/id of last trace call.
+      last_call_mark = (static_cast<uint64_t>(call_no) << 32) | get_time_u32();
+    }
+
+    RetraceWatchdog(RetraceWatchdog const&) = delete;
+    void operator=(RetraceWatchdog const&) = delete;
+};
 
 /**
  * Called when we are about to present.
@@ -500,6 +580,8 @@ public:
 
             bTimeout = isTimeout(os::getTime(), timeout, call);
             retraceCall(call);
+            if (watchdogEnabled)
+              RetraceWatchdog::Instance().CallProcessed(call->no);
             if (!call->reuse_call)
                 delete call;
             call = bTimeout ? NULL : parser->parse_call();
@@ -678,6 +760,8 @@ mainLoop(long timeoutSeconds) {
         while (!bTimeout && (call = parser->parse_call())) {
             bTimeout = isTimeout(os::getTime(), timeoutTime, call);
             retraceCall(call);
+            if (watchdogEnabled)
+                RetraceWatchdog::Instance().CallProcessed(call->no);
             if (!call->reuse_call)
                 delete call;
         }
@@ -775,6 +859,7 @@ usage(const char *argv0) {
         "      --dump-format=FORMAT dump state format (`json` or `ubjson`)\n"
         "  -w, --wait              waitOnFinish on final frame\n"
         "      --dump-per-frame-stats=out_file   dumps per frame retrace statistics in JSON format to the out_file\n"
+        "      --watchdog          invokes abort() if retrace of a single api call will take more than " << retrace::RetraceWatchdog::TimeoutInSec << " seconds\n"
         "      --timeout=N         specify retrace timeout in seconds\n"
         "      --per-frame-delay=MICROSECONDS   add extra delay after each frame (in addition to min-frame-duration)\n"
         "      --min-frame-duration=MICROSECONDS    specify minimum frame duration\n"
@@ -808,6 +893,7 @@ enum {
     MSAA_NO_RESOLVE_OPT,
     SB_OPT,
     DUMP_PER_FRAME_STATS_OPT,
+    WATCHDOG_OPT,
     TIMEOUT_OPT,
     PER_FRAME_DELAY_OPT,
     MIN_FRAME_DURATION_OPT,
@@ -865,6 +951,7 @@ longOptions[] = {
     {"wait", no_argument, 0, 'w'},
     // begin of chromeos fork specific features
     {"dump-per-frame-stats", required_argument, 0, DUMP_PER_FRAME_STATS_OPT},
+    {"watchdog", no_argument, 0, WATCHDOG_OPT},
     {"timeout", required_argument, 0, TIMEOUT_OPT},
     {"per-frame-delay", required_argument, 0, PER_FRAME_DELAY_OPT},
     {"min-frame-duration", required_argument, 0, MIN_FRAME_DURATION_OPT},
@@ -1239,6 +1326,9 @@ int main(int argc, char **argv)
                 out_file.close();
                 dumpPerFrameStats = true;
             }
+            break;
+        case WATCHDOG_OPT:
+            retrace::watchdogEnabled = true;
             break;
         case TIMEOUT_OPT:
             timeoutSeconds = trace::intOption(optarg, -1);
