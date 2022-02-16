@@ -156,7 +156,10 @@ class RetraceWatchdog
 {
 public:
     enum {
-        TimeoutInSec = 30,
+        // This is high because loading sequences can cause very expensive
+        // frames with shader compiles, etc, and we do not want flaky results
+        // on occasionally slow lab devices.
+        TimeoutInSec = 300,
         RunnerSleepInMills = 1000,
     };
 
