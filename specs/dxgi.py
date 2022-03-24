@@ -398,7 +398,7 @@ DWORD_TIMEOUT = FakeEnum(DWORD, [
 ])
 
 IDXGIKeyedMutex.methods += [
-    StdMethod(HRESULT, "AcquireSync", [(UINT64, "Key"), (DWORD_TIMEOUT, "dwMilliseconds")], sideeffects=False),
+    StdMethod(HRESULT, "AcquireSync", [(UINT64, "Key"), (DWORD_TIMEOUT, "dwMilliseconds")]),
     StdMethod(HRESULT, "ReleaseSync", [(UINT64, "Key")]),
 ]
 
@@ -542,12 +542,15 @@ dxgi.addInterfaces([
     IDXGIResource,
 ])
 dxgi.addFunctions([
+    StdFunction(BOOL, "CompatValue", [(LPCSTR, 'pValueName'), Out(Pointer(UINT64), 'pValue')], sideeffects=False),
     StdFunction(HRESULT, "CreateDXGIFactory", [(REFIID, "riid"), Out(Pointer(ObjPointer(Void)), "ppFactory")]),
     StdFunction(HRESULT, "CreateDXGIFactory1", [(REFIID, "riid"), Out(Pointer(ObjPointer(Void)), "ppFactory")]),
     StdFunction(HRESULT, "DXGID3D10CreateDevice", [(HMODULE, "hModule"), (ObjPointer(IDXGIFactory), "pFactory"), (ObjPointer(IDXGIAdapter), "pAdapter"), (UINT, "Flags"), (OpaquePointer(Const(IUnknown)), "pUnknown"), Out(Pointer(ObjPointer(Void)), "ppDevice")], internal=True),
     StdFunction(HRESULT, "DXGID3D10CreateLayeredDevice", [(UINT), (UINT), (UINT), (UINT), (UINT)], internal=True),
     StdFunction(SIZE_T,  "DXGID3D10GetLayeredDeviceSize", [(OpaqueArray(Const(Void), "NumLayers"), "pLayers"), (UINT, "NumLayers")], internal=True),
     StdFunction(HRESULT, "DXGID3D10RegisterLayers", [(OpaqueArray(Const(Void), "NumLayers"), "pLayers"), (UINT, "NumLayers")], internal=True),
+    StdFunction(HRESULT, "DXGIGetDebugInterface", [(REFIID, 'riid'), Out(Pointer(ObjPointer(Void)), 'ppDebug')]),
+    StdFunction(HRESULT, "DXGIGetDebugInterface1", [(UINT, "Flags"), (REFIID, 'riid'), Out(Pointer(ObjPointer(Void)), 'ppDebug')]),
 ])
 
 
@@ -1133,6 +1136,7 @@ DXGI_GPU_PREFERENCE = Enum('DXGI_GPU_PREFERENCE', [
 ])
 
 IDXGIFactory6 = Interface('IDXGIFactory6', IDXGIFactory5)
+IDXGIFactory7 = Interface('IDXGIFactory7', IDXGIFactory6)
 IDXGIAdapter4 = Interface('IDXGIAdapter4', IDXGIAdapter3)
 IDXGIOutput6 = Interface('IDXGIOutput6', IDXGIOutput5)
 
@@ -1149,7 +1153,13 @@ IDXGIFactory6.methods += [
     StdMethod(HRESULT, 'EnumAdapterByGpuPreference', [(UINT, 'Adapter'), (DXGI_GPU_PREFERENCE, 'GpuPreference'), (REFIID, 'riid'), Out(Pointer(ObjPointer(Void)), 'ppvAdapter')]),
 ]
 
+IDXGIFactory7.methods += [
+    StdMethod(HRESULT, 'RegisterAdaptersChangedEvent', [(HANDLE, 'hEvent'), Out(Pointer(DWORD), 'pdwCookie')], sideeffects=False),
+    StdMethod(HRESULT, 'UnregisterAdaptersChangedEvent', [(DWORD, 'dwCookie')], sideeffects=False),
+]
+
 dxgi.addInterfaces([
+    IDXGIFactory7,
     IDXGIFactory6,
     IDXGIAdapter4,
     IDXGIOutput6,

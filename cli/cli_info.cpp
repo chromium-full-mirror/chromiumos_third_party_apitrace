@@ -45,7 +45,7 @@
 #include "trace_parser.hpp"
 #include "trace_option.hpp"
 
-static const char *synopsis = "Print given trace file(s) information.";
+static const char *synopsis = "Print given trace file(s) information in JSON format";
 
 static void
 usage(void)
