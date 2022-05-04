@@ -49,7 +49,6 @@ enum Api {
 struct Profile {
     unsigned major:8;
     unsigned minor:8;
-    unsigned samples:8;
     unsigned api:1;
     unsigned core:1;
     unsigned forwardCompatible:1;
@@ -65,7 +64,6 @@ struct Profile {
         api = _api;
         major = _major;
         minor = _minor;
-        samples = 1;
         core = _core;
         forwardCompatible = _forwardCompatible;
     }
