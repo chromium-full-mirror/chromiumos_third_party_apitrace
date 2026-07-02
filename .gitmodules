@@ -22,7 +22,3 @@
 	path = thirdparty/snappy
 	url = https://github.com/google/snappy
 	shallow = true
-[submodule "thirdparty/zlib"]
-	path = thirdparty/zlib
-	url = https://github.com/madler/zlib
-	shallow = true
