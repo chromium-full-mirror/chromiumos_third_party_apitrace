@@ -20,7 +20,6 @@ foreach (path IN ITEMS
     libbacktrace/LICENSE
     libpng/LICENSE
     snappy/COPYING
-    zlib/README
 )
     if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${path}")
         message (SEND_ERROR "error: ${CMAKE_CURRENT_SOURCE_DIR}/${path} does not exist")
@@ -38,7 +37,6 @@ endif ()
 
 if (NOT ZLIB_FOUND)
     message (STATUS "Using bundled ZLIB")
-    include_with_scope (zlib.cmake)
 endif ()
 
 if (NOT PNG_FOUND)
