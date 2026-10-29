@@ -15,7 +15,6 @@ endfunction ()
 
 set (SUBMODULES_MISSING FALSE)
 foreach (path IN ITEMS
-    brotli/LICENSE
     gtest/googletest/LICENSE
     libbacktrace/LICENSE
     libpng/LICENSE
@@ -46,7 +45,6 @@ endif ()
 
 if (NOT BROTLIDEC_FOUND OR NOT BROTLIENC_FOUND)
     message (STATUS "Using bundled Brotli")
-    include_with_scope (brotli.cmake)
 endif ()
 
 if (CMAKE_EXECUTABLE_FORMAT STREQUAL "ELF")
